@@ -60,20 +60,18 @@ def create_provides_from_path(path, prefixes=sys.path, abs_mode=False,
         raise TypeError(f'Wrong type:{type(path)} of variable <<path>>, use str or pathlib.Path instead')
 
     provides = []
-    for pref in sorted(prefixes, key=lambda p: len(p.split('/')), reverse=True):
-        if pref and pref != path and pref in map(lambda x: x.as_posix(), path.parents):
-            path = Path(path.as_posix().replace(pref, ''))
+    for pref in sorted(prefixes, key=lambda p: (len(p.split('/')), p), reverse=True):
+        if pref and path.as_posix() not in [pref, os.path.join(pref, '__init__.py')]\
+           and pref in map(lambda x: x.as_posix(), path.parents):
+            path = Path(path.as_posix().replace(pref + '/', ''))
+
+    if not path:
+        raise ValueError('py3prov.create_provides_from_path: path cannot be empty (possibly it was cut by pref)')
 
     top_package_flag = False
 
     if path.as_posix().endswith('.py') or path.as_posix().endswith(shlib_suffix) or module_mode:
-        trash, *parts = path.parts
-        if trash != '/':
-            parts.insert(0, trash)
-
-        trash, *parts = path.parts
-        if trash != '/':
-            parts.insert(0, trash)
+        parts = list(path.parts)
 
         for suffix in sorted([so_suffix, shlib_suffix, soabi, soabi3, '.py', abi3], key=lambda p: len(p), reverse=True):
             parts[-1] = parts[-1].replace(suffix, '')
