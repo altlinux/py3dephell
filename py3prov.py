@@ -146,7 +146,7 @@ def search_for_provides(path, prefixes=sys.path, find_pth=False, abs_mode=False,
 
 def module_detector(path, prefixes, modules=[], verbose_mode=True):
     for pref in sorted(prefixes, key=lambda p: len(p.split('/')), reverse=True):
-        if pref and (pref := os.path.normpath(pref)) and path.startswith(pref):
+        if pref and (pref := os.path.normpath(pref)) and path.startswith(pref + '/') and pref != os.path.normpath(path):
             module = re.match(r'%s\/([^\/]+)' % re.escape(pref), path).groups()[0]
             if verbose_mode and module not in modules:
                 print(f'Detected potentional module:{module}', file=sys.stderr)
