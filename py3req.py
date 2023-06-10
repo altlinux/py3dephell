@@ -1,0 +1,297 @@
+#! /usr/bin/env python3
+
+
+import os
+import re
+import sys
+import ast
+import shlex
+import argparse
+from py3prov import generate_provides, search_for_provides
+
+
+def is_import_stmt(node):
+    if type(node) == ast.Call and type(node.func) == ast.Name\
+       and node.func.id == '__import__' and node.args\
+       and type(node.args[0]) == ast.Constant:
+        return node.args[0]
+
+
+def is_importlib_call(node):
+    if type(node) == ast.Call and type(node.func) == ast.Attribute\
+            and type(node.func.value) == ast.Name\
+            and node.func.value.id == 'importlib'\
+            and node.func.attr == 'import_module'\
+            and type(node.args[0]) == ast.Constant:
+        return node.args[0]
+
+
+def build_full_qualified_name(path, level, dependency=None, prefix=[]):
+    path = os.path.abspath(path)
+    for pref in sorted(sys.path + prefix, key=lambda k: len(k.split('/')), reverse=True):
+        if pref and (path_pref := re.match(r'\S*%s' % re.escape(pref), path)):
+            path = re.sub(re.escape(path_pref.group()), '', path)
+            break
+    parent = '.'.join(name for name in path.split('/')[:-level] if name)
+
+    if dependency:
+        return f'{parent}.{dependency}' if parent else f'{dependency}'
+    return parent
+
+
+def get_text(path, size=-1, verbose=False):
+    try:
+        with open(path, mode='rb') as f:
+            return f.read(size)
+    except FileNotFoundError:
+        if verbose:
+            print(f'No such file:{path}', file=sys.stderr)
+        return None
+    except PermissionError:
+        if verbose:
+            print(f'Permission denied:{path}', file=sys.stderr)
+        return None
+    except IsADirectoryError:
+        if verbose:
+            print(f'Cannot work with dir:{path}', file=sys.stderr)
+        return None
+
+
+def catch_so(path, stderr):
+    dep_version = os.getenv('RPM_PYTHON3_VERSION', '%s.%s' % sys.version_info[0:2])
+    bit_depth = get_text(path, size=5)[4]
+    match bit_depth:
+        case 1:
+            return f'python{dep_version}-ABI'
+        case 2:
+            return f'python{dep_version}-ABI(64bit)'
+        case _:
+            print(f'py3req.py: Wrong ELF-class for file {path}', file=stderr)
+            return None
+
+
+def _find_imports_in_ast(path, code, Node, prefix, only_external_deps,
+                         skip_subs, stderr, verbose):
+    abs_deps = {}
+    rel_deps = {}
+    adv_deps = {}
+    skip_deps = {}
+
+    for node in ast.parse(code).body if code else ast.iter_child_nodes(Node):
+        if isinstance(node, ast.Import):
+            for name in node.names:
+                abs_deps.setdefault(name.name, []).append(name.lineno)
+        elif isinstance(node, ast.ImportFrom):
+            if node.level == 0:
+                module = node.module
+                if skip_subs:
+                    abs_deps.setdefault(module, []).append(node.lineno)
+                else:
+                    for name in node.names:
+                        mod_name = f'{module}.{name.name}'
+                        abs_deps.setdefault(mod_name, []).append(name.lineno)
+            else:
+                module = build_full_qualified_name(path, node.level, node.module, prefix)
+                if skip_subs:
+                    rel_deps.setdefault(module, []).append(node.lineno)
+                else:
+                    for name in node.names:
+                        mod_name = f'{module}.{name.name}'
+                        rel_deps.setdefault(mod_name, []).append(node.lineno)
+
+        elif (dep := is_import_stmt(node)) or (dep := is_importlib_call(node)):
+            if dep.value in adv_deps:
+                adv_deps[dep.value].append(node.lineno)
+            else:
+                adv_deps[dep.value] = [node.lineno]
+
+        elif only_external_deps:
+            for tmp in _find_imports_in_ast(path=path, code=None, Node=node, prefix=prefix,
+                                            only_external_deps=only_external_deps,
+                                            skip_subs=skip_subs, stderr=stderr,
+                                            verbose=verbose):
+                for dep, line in tmp.items():
+                    skip_deps.setdefault(dep, []).append(line)
+        else:
+            tmp_abs, tmp_rel, tmp_adv, tp =\
+                _find_imports_in_ast(path=path, code=None, Node=node, prefix=prefix,
+                                     only_external_deps=only_external_deps,
+                                     skip_subs=skip_subs, stderr=stderr, verbose=verbose)
+            abs_deps.update(tmp_abs)
+            rel_deps.update(tmp_rel)
+            adv_deps.update(tmp_adv)
+    return abs_deps, rel_deps, adv_deps, skip_deps
+
+
+def read_ast_tree(path, code=None, prefix=[], only_external_deps=False,
+                  skip_subs=True, stderr=sys.stderr, verbose=True):
+    if not code and not (code := get_text(path)):
+        return {}, {}, {}, {}
+    try:
+        return _find_imports_in_ast(path, code, None, prefix, only_external_deps,
+                                    skip_subs, stderr, verbose)
+    except (SyntaxError, ValueError) as msg:
+        if verbose:
+            print(f'py3req: error:{path}: invalid syntax', file=stderr)
+            head, ext = os.path.splitext(path)
+            if ext == '.py':
+                print(f'py3req:{path}:{msg.msg}', file=stderr)
+            else:
+                print(f'py3req:{path}: possibly not pythonish file',
+                      file=stderr)
+        return {}, {}, {}, {}
+
+
+def process_file(path, only_external_deps=False, skip_subs=False, prefix=[],
+                 pip_format=False, stderr=sys.stderr, verbose=False):
+    if (code := get_text(path, verbose=verbose)):
+        return read_ast_tree(path, code, prefix=prefix,
+                             only_external_deps=only_external_deps,
+                             skip_subs=skip_subs, stderr=stderr, verbose=verbose)
+    return {}, {}, {}, {}
+
+
+def filter_requirements(file, deps, provides=[], only_top_module=[], ignore_list=[],
+                        skip_flag=False, pip_format=False, stderr=sys.stderr,
+                        verbose=False):
+    '''
+    This function filter requirements through self-provides, different rules and etc
+
+    Arguments:
+    file - name of file, which contains dependencies
+    deps - list of dependencies
+    provides - list of provides (there can be self-provides)
+    only_top_module - for dependencies like a.b skip b
+    ignore_list - list of dependencies to be ignored
+    skip_flag - with this flag deps will be skipped
+    pip_format - change dependencies to pip_format (only names)
+    stderr - messages output
+    verbose - verbose flag
+    '''
+    dependencies = []
+    for dep, lines in deps.items():
+        if dep in ignore_list:
+            if verbose:
+                print(f'py3req:{file}: skipping "{dep}" lines:{lines}', file=stderr)
+        elif dep in provides:
+            if verbose:
+                print(f'py3req:{file}: "{dep}" lines:{lines} is possibly a '
+                      'self-providing dependency, skip it', file=stderr)
+        elif skip_flag:
+            if verbose:
+                print(f'py3req:{file}: "{dep}" lines:{lines}: Ignore', file=stderr)
+        else:
+            if only_top_module:
+                dep = dep.split('.')[0]
+            if pip_format:
+                dependencies.append(dep)
+            else:
+                dependencies.append(f'python{sys.version_info[0]}({dep})')
+    return dependencies
+
+
+def generate_requirements(files, add_prov_path=[], prefix=[],
+                          ignore_list=sys.builtin_module_names, read_prov_from_file=None,
+                          skip_subs=True, only_external_deps=False, only_top_module=False,
+                          pip_format=False, stderr=sys.stderr, verbose=True):
+    full_provides = set()
+    abs_provides = set()
+    add_provides = set()
+    modules = {}
+    dependencies = {}
+
+    if read_prov_from_file:
+        with open(read_prov_from_file) as f:
+            full_provides |= set([prov.rstrip() for prov in f.readlines()])
+
+    for module, prov in generate_provides(files, skip_pth=True, deep_search=False,
+                                          abs_mode=False, verbose=verbose, skip_wrong_names=False, skip_namespace_pkgs=False).items():
+        if prov[-1] is not None:
+            modules[module] = prov[-1]
+        full_provides |= set(prov[:-1])
+
+    for module, prov in generate_provides(files, skip_pth=True, deep_search=False,
+                                          abs_mode=True, verbose=verbose, skip_wrong_names=False, skip_namespace_pkgs=False).items():
+        if prov[-1] is True:
+            modules.add(module)
+        abs_provides |= set(prov[:-1])
+
+    for path in add_prov_path:
+        prov = search_for_provides(path, find_pth=False, abs_mode=False, skip_wrong_names=False, skip_namespace_pkgs=False)
+        add_provides |= set(prov)
+
+    for file in files:
+        if file.endswith('.so'):
+            if (dep := catch_so(file, stderr)):
+                dependencies[file] = [], [], [], [dep]
+                continue
+
+        abs_deps, rel_deps, adv_deps, skip =\
+            process_file(file, prefix=prefix, only_external_deps=only_external_deps,
+                         skip_subs=skip_subs, pip_format=pip_format, stderr=stderr, verbose=verbose)
+
+        if file in modules.keys() and '-' not in modules[file]:
+            abs_deps = filter_requirements(file, abs_deps, abs_provides | add_provides,
+                                           only_top_module, ignore_list, pip_format=pip_format,
+                                           stderr=stderr, verbose=verbose)
+        else:
+            abs_deps = filter_requirements(file, abs_deps, full_provides | add_provides,
+                                           only_top_module, ignore_list, pip_format=pip_format,
+                                           stderr=stderr, verbose=verbose)
+
+        rel_deps = filter_requirements(file, rel_deps, full_provides | add_provides,
+                                       only_top_module=False, ignore_list=ignore_list,
+                                       pip_format=pip_format, stderr=stderr, verbose=verbose)
+
+        adv_deps = filter_requirements(file, adv_deps, full_provides | add_provides,
+                                       only_top_module=False, ignore_list=ignore_list,
+                                       pip_format=pip_format, stderr=stderr, verbose=verbose)
+
+        filter_requirements(file, skip, skip_flag=True, stderr=stderr, verbose=verbose)
+
+        dependencies[file] = abs_deps, rel_deps, adv_deps, []
+
+    return dependencies
+
+
+if __name__ == '__main__':
+    description = 'Search for requiremnts for pyfile'
+    args = argparse.ArgumentParser(description=description)
+    args.add_argument('--add_prov_path', nargs='+', default=[],
+                      help='List of additional paths for provides')
+    # How many prefixes can we have? prefix=str or prefixes=[str]
+    args.add_argument('--prefix', default='',
+                      help='Prefix that will be removed from full'
+                           'qualified name for relative import')
+    args.add_argument('--ignore_list', nargs='+', default=sys.builtin_module_names,
+                      help='List of dependencies that should be ignored')
+    args.add_argument('--read_prov_from_file',
+                      default=None,
+                      help='Read provides from file')
+    args.add_argument('--only_external_deps', action='store_true',
+                      help='Skip dependencies, that are used inside conditions')
+    args.add_argument('--only_top_module', action='store_true',
+                      help='For dependency like a.b skip b')
+    args.add_argument('--pip_format', action='store_true',
+                      help='Print dependencies in pip format')
+    args.add_argument('--verbose', action='store_true',
+                      help='Verbose stderr')
+    args.add_argument('input', nargs='*',
+                      help='List of files from which deps will be created', default=[])
+    args = args.parse_args()
+    if not args.input:
+        args.input = shlex.split(sys.stdin.read())
+
+    dependencies = generate_requirements(files=args.input, add_prov_path=args.add_prov_path,
+                                         ignore_list=args.ignore_list,
+                                         read_prov_from_file=args.read_prov_from_file,
+                                         skip_subs=True, prefix=[args.prefix],
+                                         only_external_deps=args.only_external_deps,
+                                         only_top_module=args.only_top_module,
+                                         pip_format=args.pip_format, verbose=args.verbose)
+
+    for file, deps in dependencies.items():
+        if any(deps) and args.verbose:
+            print(f'{file}:{" ".join([" ".join(req) for req in deps if req])}')
+        elif any(deps):
+            print('\n'.join(['\n'.join(req) for req in deps if req]))
