@@ -60,7 +60,11 @@ def get_text(path, size=-1, verbose=False):
 
 def catch_so(path, stderr):
     dep_version = os.getenv('RPM_PYTHON3_VERSION', '%s.%s' % sys.version_info[0:2])
-    bit_depth = get_text(path, size=5)[4]
+    try:
+        bit_depth = get_text(path, size=5)[4]
+    except IndexError:
+        print(f'py3req.py:Catched error for ELF:{path}, possibly file is empty or broken', file=sys.stderr)
+
     match bit_depth:
         case 1:
             return f'python{dep_version}-ABI'
