@@ -7,6 +7,7 @@ import sys
 import ast
 import shlex
 import argparse
+import pathlib
 from py3prov import generate_provides, search_for_provides
 
 
@@ -27,12 +28,12 @@ def is_importlib_call(node):
 
 
 def build_full_qualified_name(path, level, dependency=None, prefix=[]):
-    path = os.path.abspath(path)
-    for pref in sorted(sys.path + prefix, key=lambda k: len(k.split('/')), reverse=True):
-        if pref and (path_pref := re.match(r'\S*%s' % re.escape(pref), path)):
-            path = re.sub(re.escape(path_pref.group()), '', path)
-            break
-    parent = '.'.join(name for name in path.split('/')[:-level] if name)
+    parent_path = pathlib.Path(path).absolute().parts[1:-level]
+    parent_path = ''.join(f'/{p}' for p in parent_path)
+    for pref in sorted(sys.path[1:] + prefix, key=lambda k: len(k.split('/')), reverse=True):
+        if pref and (path_pref := re.match(r'%s/' % re.escape(pref), parent_path)):
+            parent_path = re.sub(re.escape(path_pref.group()), '', parent_path)
+    parent = '.'.join(name for name in parent_path.split('/') if name)
 
     if dependency:
         return f'{parent}.{dependency}' if parent else f'{dependency}'
