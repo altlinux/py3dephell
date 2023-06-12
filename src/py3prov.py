@@ -74,8 +74,13 @@ def create_provides_from_path(path, prefixes=sys.path, abs_mode=False,
     if trash != '/':
         parts.insert(0, trash)
 
-        for suffix in sorted([so_suffix, shlib_suffix, soabi, soabi3, '.py', abi3], key=lambda p: len(p), reverse=True):
+    for suffix in sorted([so_suffix, shlib_suffix, soabi, soabi3, '.py', abi3], key=lambda p: len(p), reverse=True):
+        if parts[-1].endswith(suffix):
             parts[-1] = parts[-1].replace(suffix, '')
+            module = True
+            break
+    else:
+        module = False
 
     if module or pkg_mode:
         if parts[-1] == '__init__':
