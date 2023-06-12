@@ -34,14 +34,14 @@ def processing_pth(path):
 
 
 def create_provides_from_path(path, prefixes=sys.path, abs_mode=False,
-                              module_mode=False, skip_wrong_names=True, skip_namespace_pkgs=True):
+                              pkg_mode=False, skip_wrong_names=True, skip_namespace_pkgs=True):
     '''
     Creates provides from given path for 1 file.
 
     Arguments:
     path - path from which provides will be created
     prefix - list of prefixes to be excluded from provides
-    module_mode - by default path ended by directory will be skipped
+    pkg_mode - by default path ended by directory will be skipped
     skip_wrong_names - if there is "-" in provide it will be skipped
     Examples:
     create_provides_from_path('/usr/lib64/python3/site-packages/ast.py', sys.path):
@@ -76,6 +76,7 @@ def create_provides_from_path(path, prefixes=sys.path, abs_mode=False,
         for suffix in sorted([so_suffix, shlib_suffix, soabi, soabi3, '.py', abi3], key=lambda p: len(p), reverse=True):
             parts[-1] = parts[-1].replace(suffix, '')
 
+    if module or pkg_mode:
         if parts[-1] == '__init__':
             top_package_flag = True
 
@@ -101,7 +102,7 @@ def create_provides_from_path(path, prefixes=sys.path, abs_mode=False,
 
     if (top_package_flag or not skip_namespace_pkgs) and parent.as_posix() != '.':
         provides += create_provides_from_path(parent, prefixes,
-                                              module_mode=True, abs_mode=abs_mode, skip_wrong_names=skip_wrong_names)
+                                              pkg_mode=True, abs_mode=abs_mode, skip_wrong_names=skip_wrong_names)
 
     return provides
 
