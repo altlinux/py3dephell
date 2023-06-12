@@ -61,7 +61,7 @@ def create_provides_from_path(path, prefixes=sys.path, abs_mode=False,
 
     provides = []
     for pref in sorted(prefixes, key=lambda p: (len(p.split('/')), p), reverse=True):
-        if pref and path.as_posix() not in [pref, os.path.join(pref, '__init__.py')]\
+        if pref and (pref := os.path.normpath(pref)) and path.as_posix() != pref\
            and pref in map(lambda x: x.as_posix(), path.parents):
             path = Path(path.as_posix().replace(pref + '/', ''))
 
