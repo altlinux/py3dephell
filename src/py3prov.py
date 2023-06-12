@@ -70,8 +70,9 @@ def create_provides_from_path(path, prefixes=sys.path, abs_mode=False,
 
     top_package_flag = False
 
-    if path.as_posix().endswith('.py') or path.as_posix().endswith(shlib_suffix) or module_mode:
-        parts = list(path.parts)
+    trash, *parts = path.parts
+    if trash != '/':
+        parts.insert(0, trash)
 
         for suffix in sorted([so_suffix, shlib_suffix, soabi, soabi3, '.py', abi3], key=lambda p: len(p), reverse=True):
             parts[-1] = parts[-1].replace(suffix, '')
