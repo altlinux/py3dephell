@@ -53,6 +53,24 @@ class TestPy3Prov(unittest.TestCase):
             with self.subTest("Testing create_provides_from_path for packages"):
                 self.assertEqual(py3prov.create_provides_from_path(**inp_out[0]), inp_out[1])
 
+    def test_module_detector(self):
+        test_cases = {0: [{'path': '/usr/lib64/python3/site-packages/pkg/mod1.py',
+                           'prefixes': ['/usr/lib64/python3/site-packages/', '/', '']},
+                          ('/usr/lib64/python3/site-packages', 'pkg')]}
+        test_cases[1] = [{**test_cases[0][0], 'prefixes': ['/usr/lib64/python3/site-packages', '/', '']},
+                         ('/usr/lib64/python3/site-packages', 'pkg')]
+        test_cases[2] = [{**test_cases[0][0], 'prefixes': ['/usr/lib64/python3/site-package', '/', '']},
+                         (None, None)]
+        test_cases[3] = [{**test_cases[1][0], 'modules': ['pkg']},
+                         ('/usr/lib64/python3/site-packages', 'pkg')]
+        test_cases[4] = [{**test_cases[1][0], 'path': '/usr/lib64/python3/site-packages/mod1.py'},
+                         ('/usr/lib64/python3/site-packages', 'mod1.py')]
+
+        for subtest_num, inp_out in test_cases.items():
+            with self.subTest("Testing module_detector"):
+                self.assertEqual(py3prov.module_detector(**inp_out[0]), inp_out[1])
+                self.assertEqual(py3prov.module_detector(**inp_out[0], verbose_mode=False), inp_out[1])
+
 
 if __name__ == '__main__':
     unittest.main()
