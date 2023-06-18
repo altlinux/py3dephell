@@ -106,6 +106,24 @@ class TestPy3Prov(unittest.TestCase):
         self.assertEqual(py3prov.processing_pth('/tmp/pkg_for_pth.pth'), ['/tmp/pkg_for_pth'])
         cleanup_package('/tmp/pkg_for_pth')
 
+    def test_files_filter(self):
+        non_pref = ['/usr/src/top_mod.py', '/usr/src/pkg', '/usr/src/pkg/mod.py']
+        under_pref = ['/usr/lib/top_module.py', '/usr/lib/python3/site-packages/package/',
+                      '/usr/lib/python3/site-packages/package/module.py', '/usr/lib/top_pkg']
+        test_cases = {}
+        test_cases[0] = [{'files': non_pref + under_pref, 'prefixes': [], 'only_prefix': True}, {}]
+        test_cases[1] = [{**test_cases[0][0], 'only_prefix': False}, {p: None for p in non_pref + under_pref}]
+        test_cases[2] = [{**test_cases[0][0], 'prefixes': ['/usr/lib', '/usr/lib/python3/site-packages/']},
+                         {'/usr/lib/top_module.py': 'top_module.py',
+                          '/usr/lib/top_pkg': 'top_pkg',
+                          '/usr/lib/python3/site-packages/package/': 'package',
+                          '/usr/lib/python3/site-packages/package/module.py': 'package'}]
+
+        for subtest_num, inp_out in test_cases.items():
+            with self.subTest("Testing files_filter"):
+                self.assertEqual(py3prov.files_filter(**inp_out[0]), inp_out[1])
+                self.assertEqual(py3prov.files_filter(**inp_out[0], verbose_mode=False), inp_out[1])
+
 
 if __name__ == '__main__':
     unittest.main()
