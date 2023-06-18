@@ -116,7 +116,7 @@ def create_provides_from_path(path, prefixes=sys.path, abs_mode=False,
 def search_for_provides(path, prefixes=sys.path, find_pth=False, abs_mode=False,
                         skip_wrong_names=True, skip_namespace_pkgs=True):
     '''
-    This function walks through given paths, detect .pth and search for provides
+    This function walks through given path, detect .pth and search for provides
 
     Arguments:
     path - given path
@@ -138,7 +138,7 @@ def search_for_provides(path, prefixes=sys.path, find_pth=False, abs_mode=False,
         else:
             return create_provides_from_path(path.as_posix(), prefixes, abs_mode=abs_mode,
                                              skip_wrong_names=skip_wrong_names, skip_namespace_pkgs=skip_namespace_pkgs)
-    elif path.is_dir() and not path.as_posix().endswith('__pycache__'):
+    elif path.is_dir() and '__pycache__' not in path.as_posix():
         for subpath in path.iterdir():
             if find_pth and (subpath := subpath.as_posix()):
                 new_prefixes += search_for_provides(subpath, prefixes, find_pth,
