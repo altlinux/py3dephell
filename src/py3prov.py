@@ -159,7 +159,7 @@ def module_detector(path, prefixes, modules=[], verbose_mode=True):
     return None, None
 
 
-def files_filter(files, prefixes=sys.path, skip_pth=False, only_prefix=False,
+def files_filter(files, prefixes=sys.path, only_prefix=False,
                  deep_search=False, verbose_mode=True):
     '''
     Sort files according to the prefix.
@@ -167,7 +167,6 @@ def files_filter(files, prefixes=sys.path, skip_pth=False, only_prefix=False,
     Arguments:
     files - list of files, where provides will be searched for
     prefixes - list of prefixes
-    skip_pth - do not build special provides according to pth files
     only_prefix - create provides only for files with prefix from prefixes
     deep_search - with this option py3prov will try to find all provides according
     to potential module (if it exists)
