@@ -1,13 +1,30 @@
 import sys
+import pathlib
 import unittest
 
 # Bad solution, need to fix it
 # I hate myself for that
-import pathlib
 parent_dir = pathlib.Path(__file__).parent.parent
 src_dir = parent_dir.joinpath('src')
 sys.path.append(src_dir.as_posix())
 import py3prov
+
+
+def prepare_package(path, name, namespace_pkg=False, w_pth=False, level=0):
+    level -= 1
+    p = pathlib.Path(path)
+    pkg = p.joinpath(name)
+    pkg.mkdir()
+
+    if not namespace_pkg:
+        init = pkg.joinpath('__init__.py')
+        init.write_bytes(b'')
+
+    for i in range(2):
+        mod = pkg.joinpath(f'mod_{i}_{level}.py')
+        mod.write_bytes(b'')
+    if level > 0:
+        return prepare_package(pkg.as_posix(), f'{name}_sub', namespace_pkg, w_pth, level)
 
 
 class TestPy3Prov(unittest.TestCase):

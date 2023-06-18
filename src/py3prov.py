@@ -29,7 +29,7 @@ def processing_pth(path):
             new_names = [os.path.join(path, new_dir) for new_dir in new_names]
             return new_names
     except FileNotFoundError:
-        print(f'No such file or directory:{path}', file=sys.stderr)
+        print(f'py3prov: No such file or directory:{path}', file=sys.stderr)
         return []
 
 
@@ -87,7 +87,7 @@ def create_provides_from_path(path, prefixes=sys.path, abs_mode=False,
             top_package_flag = True
 
         if '.' in parts[-1]:
-            print(f'Bad name for provides from path:{path.as_posix()}', file=sys.stderr)
+            print(f'py3prov: bad name for provides from path:{path.as_posix()}', file=sys.stderr)
 
         if abs_mode and ('-' not in (provide := '.'.join(parts)) and '.' not in '/'.join(parts[:-1])
                          or not skip_wrong_names):
@@ -154,7 +154,7 @@ def module_detector(path, prefixes, modules=[], verbose_mode=True):
         if pref and (pref := os.path.normpath(pref)) and path.startswith(pref + '/') and pref != os.path.normpath(path):
             module = re.match(r'%s\/([^\/]+)' % re.escape(pref), path).groups()[0]
             if verbose_mode and module not in modules:
-                print(f'Detected potentional module:{module}', file=sys.stderr)
+                print(f'py3prov: detected potentional module:{module}', file=sys.stderr)
             return pref, module
     return None, None
 
