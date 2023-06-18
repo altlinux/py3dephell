@@ -30,6 +30,16 @@ def prepare_package(path, name, namespace_pkg=False, w_pth=False, level=0):
         return prepare_package(pkg.as_posix(), f'{name}_sub', namespace_pkg, w_pth, level)
 
 
+def cleanup_package(path):
+    p = pathlib.Path(path)
+    if p.is_file():
+        p.unlink()
+    elif p.is_dir():
+        for sub in p.iterdir():
+            cleanup_package(sub)
+        p.rmdir()
+
+
 class TestPy3Prov(unittest.TestCase):
     def test_create_provides_from_path_for_module(self):
         # Top-module
