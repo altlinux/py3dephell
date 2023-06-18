@@ -101,6 +101,11 @@ class TestPy3Prov(unittest.TestCase):
                 self.assertEqual(py3prov.module_detector(**inp_out[0]), inp_out[1])
                 self.assertEqual(py3prov.module_detector(**inp_out[0], verbose_mode=False), inp_out[1])
 
+    def test_processing_pth(self):
+        prepare_package('/tmp', 'pkg_for_pth', w_pth=True, level=1)
+        self.assertEqual(py3prov.processing_pth('/tmp/pkg_for_pth.pth'), ['/tmp/pkg_for_pth'])
+        cleanup_package('/tmp/pkg_for_pth')
+
 
 if __name__ == '__main__':
     unittest.main()
