@@ -23,6 +23,9 @@ def prepare_package(path, name, namespace_pkg=False, w_pth=False, level=0):
     for i in range(2):
         mod = pkg.joinpath(f'mod_{i}_{level}.py')
         mod.write_bytes(b'')
+    if w_pth:
+        pth = p.joinpath(f'{name}.pth')
+        pth.write_text(f'{name}')
     if level > 0:
         return prepare_package(pkg.as_posix(), f'{name}_sub', namespace_pkg, w_pth, level)
 
