@@ -25,14 +25,14 @@ def prepare_package(path, name, namespace_pkg=False, w_pth=False, level=0):
         mod.write_bytes(b'')
     if w_pth:
         pth = p.joinpath(f'{name}.pth')
-        pth.write_text(f'{name}')
+        pth.write_text(f'{name}\n')
     if level > 0:
         return prepare_package(pkg.as_posix(), f'{name}_sub', namespace_pkg, w_pth, level)
 
 
 def cleanup_package(path):
     p = pathlib.Path(path)
-    if p.is_file():
+    if p.is_file() or p.is_symlink():
         p.unlink()
     elif p.is_dir():
         for sub in p.iterdir():
@@ -105,6 +105,7 @@ class TestPy3Prov(unittest.TestCase):
         prepare_package('/tmp', 'pkg_for_pth', w_pth=True, level=1)
         self.assertEqual(py3prov.processing_pth('/tmp/pkg_for_pth.pth'), ['/tmp/pkg_for_pth'])
         cleanup_package('/tmp/pkg_for_pth')
+        cleanup_package('/tmp/pkg_for_pth.pth')
 
     def test_files_filter(self):
         non_pref = ['/usr/src/top_mod.py', '/usr/src/pkg', '/usr/src/pkg/mod.py']
