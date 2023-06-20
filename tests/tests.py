@@ -60,7 +60,8 @@ class TestPy3Prov(unittest.TestCase):
         test_cases[4] = [{**test_cases[3][0], 'abs_mode':True}, ['usr.lib64.python3.site-packages.module']]
         for subtest_num, inp_out in test_cases.items():
             with self.subTest("Testing create_provides_from_path for module"):
-                self.assertEqual(py3prov.create_provides_from_path(**inp_out[0]), inp_out[1])
+                self.assertEqual(py3prov.create_provides_from_path(**inp_out[0]), inp_out[1],
+                                 msg=f'SubTest:{subtest_num} FAILED')
 
     def test_create_provides_from_path_for_pkg(self):
         # Module from regular package
@@ -81,7 +82,8 @@ class TestPy3Prov(unittest.TestCase):
 
         for subtest_num, inp_out in test_cases.items():
             with self.subTest("Testing create_provides_from_path for packages"):
-                self.assertEqual(py3prov.create_provides_from_path(**inp_out[0]), inp_out[1])
+                self.assertEqual(py3prov.create_provides_from_path(**inp_out[0]), inp_out[1],
+                                 msg=f'SubTest:{subtest_num} FAILED')
 
     def test_module_detector(self):
         test_cases = {0: [{'path': '/usr/lib64/python3/site-packages/pkg/mod1.py',
@@ -98,8 +100,10 @@ class TestPy3Prov(unittest.TestCase):
 
         for subtest_num, inp_out in test_cases.items():
             with self.subTest("Testing module_detector"):
-                self.assertEqual(py3prov.module_detector(**inp_out[0]), inp_out[1])
-                self.assertEqual(py3prov.module_detector(**inp_out[0], verbose_mode=False), inp_out[1])
+                self.assertEqual(py3prov.module_detector(**inp_out[0]), inp_out[1],
+                                 msg=f'SubTest:{subtest_num} FAILED')
+                self.assertEqual(py3prov.module_detector(**inp_out[0], verbose_mode=False), inp_out[1],
+                                 msg=f'SubTest:{subtest_num} FAILED')
 
     def test_processing_pth(self):
         prepare_package('/tmp', 'pkg_for_pth', w_pth=True, level=1)
