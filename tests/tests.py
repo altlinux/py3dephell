@@ -126,8 +126,60 @@ class TestPy3Prov(unittest.TestCase):
 
         for subtest_num, inp_out in test_cases.items():
             with self.subTest("Testing files_filter"):
-                self.assertEqual(py3prov.files_filter(**inp_out[0]), inp_out[1])
-                self.assertEqual(py3prov.files_filter(**inp_out[0], verbose_mode=False), inp_out[1])
+                self.assertEqual(py3prov.files_filter(**inp_out[0]), inp_out[1],
+                                 msg=f'SubTest:{subtest_num} FAILED')
+                self.assertEqual(py3prov.files_filter(**inp_out[0], verbose_mode=False), inp_out[1],
+                                 msg=f'SubTest:{subtest_num} FAILED')
+
+    def test_search_for_provides(self):
+        prepare_package('/tmp', 'pkg_for_searching', w_pth=True, level=1)
+        test_cases = {}
+        test_cases[0] = [{'path': '/tmp/pkg_for_searching.pth', 'find_pth': True}, []]
+        test_cases[1] = [{**test_cases[0][0], 'prefixes':['/tmp']}, ['/tmp/pkg_for_searching']]
+        test_cases[2] = [{'path': '/tmp/pkg_for_searching', 'prefixes': ['/tmp'], 'abs_mode':True},
+                         ['pkg_for_searching', 'pkg_for_searching.mod_0_0',  'pkg_for_searching.mod_1_0',
+                          'pkg_for_searching.__init__']]
+        test_cases[3] = [{**test_cases[2][0], 'abs_mode': False},
+                         [*test_cases[2][1], 'mod_0_0', 'mod_1_0', '__init__']]
+
+        for subtest_num, inp_out in test_cases.items():
+            with self.subTest("Testing search_for_provides"):
+                self.assertSetEqual(set(py3prov.search_for_provides(**inp_out[0])), set(inp_out[1]),
+                                    msg=f'SubTest:{subtest_num} FAILED')
+
+        cleanup_package('/tmp/pkg_for_searching')
+        cleanup_package('/tmp/pkg_for_searching.pth')
+
+    def test_generate_provides(self):
+        prepare_package('/tmp', 'pkg_for_generate_provides', w_pth=True, level=2)
+
+        test_cases = {}
+        provides = ['__init__', 'pkg_for_generate_provides.__init__', 'tmp.pkg_for_generate_provides.__init__',
+                    'pkg_for_generate_provides', 'tmp.pkg_for_generate_provides', None]
+        test_cases[0] = [{'files': ['/tmp/pkg_for_generate_provides/__init__.py'], 'prefixes': []},
+                         {'/tmp/pkg_for_generate_provides/__init__.py': provides}]
+        provides = ['tmp.pkg_for_generate_provides.__init__', 'tmp.pkg_for_generate_provides', None]
+        test_cases[1] = [{**test_cases[0][0], 'abs_mode': True},
+                         {'/tmp/pkg_for_generate_provides/__init__.py': provides}]
+        test_cases[2] = [{'files': ['/tmp/pkg_for_generate_provides'], 'only_prefix':True, 'prefixes': []}, {}]
+        provides = ['__init__', 'pkg_for_generate_provides.__init__', 'pkg_for_generate_provides',
+                    'pkg_for_generate_provides']
+        test_cases[3] = [{**test_cases[0][0], 'prefixes': ['/tmp']},
+                         {'/tmp/pkg_for_generate_provides/__init__.py': provides}]
+        provides = ['pkg_for_generate_provides.__init__', 'pkg_for_generate_provides', 'pkg_for_generate_provides']
+        test_cases[4] = [{**test_cases[0][0], 'prefixes': ['/tmp'], 'abs_mode': True},
+                         {'/tmp/pkg_for_generate_provides/__init__.py': provides}]
+        provides = ['mod_0_1', 'pkg_for_generate_provides.mod_0_1', 'pkg_for_generate_provides']
+        test_cases[5] = [{'files': ['/tmp/pkg_for_generate_provides/mod_0_1.py'], 'prefixes': ['/tmp']},
+                         {'/tmp/pkg_for_generate_provides/mod_0_1.py': provides}]
+
+        for subtest_num, inp_out in test_cases.items():
+            with self.subTest("Testing generate_provides"):
+                self.assertDictEqual(py3prov.generate_provides(**inp_out[0]), inp_out[1],
+                                     msg=f'SubTest:{subtest_num} FAILED')
+
+        cleanup_package('/tmp/pkg_for_generate_provides')
+        cleanup_package('/tmp/pkg_for_generate_provides.pth')
 
 
 if __name__ == '__main__':
