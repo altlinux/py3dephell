@@ -206,10 +206,9 @@ def generate_provides(files, prefixes=sys.path, skip_pth=False, only_prefix=Fals
         for path in files:
             pth |= set(search_for_provides(path, prefixes, find_pth=True))
         provides.update(files_filter(pth, [os.path.split(pref)[0] for pref in pth],
-                                     skip_pth=True, only_prefix=only_prefix, verbose_mode=verbose))
-    files_dict = files_filter(files.copy(), prefixes=prefixes, skip_pth=skip_pth,
-                              only_prefix=only_prefix, deep_search=deep_search,
-                              verbose_mode=verbose)
+                                     only_prefix=only_prefix, verbose_mode=verbose))
+    files_dict = files_filter(files.copy(), prefixes=prefixes, only_prefix=only_prefix,
+                              deep_search=deep_search, verbose_mode=verbose)
 
     for path, module_name in files_dict.items():
         provides[path] = search_for_provides(path, prefixes, abs_mode=abs_mode,
