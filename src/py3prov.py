@@ -132,7 +132,7 @@ def search_for_provides(path, prefixes=sys.path, find_pth=False, abs_mode=False,
 
     if path.is_file() or path.is_symlink():
         if find_pth and path.suffix == '.pth':
-            return processing_pth(path.as_posix())
+            return pth_detector(path.as_posix(), prefixes=prefixes)
         elif find_pth:
             return []
         else:
@@ -157,6 +157,18 @@ def module_detector(path, prefixes, modules=[], verbose_mode=True):
                 print(f'py3prov: detected potentional module:{module}', file=sys.stderr)
             return pref, module
     return None, None
+
+
+def pth_detector(path, prefixes, verbose_mode=False):
+    for pref in sorted(prefixes, key=lambda p: (len(p.split('/')), p), reverse=True):
+        if pref and (pref := os.path.normpath(pref)) and\
+           (pth := re.match(r'%s\/([^\/]+)\.pth' % re.escape(pref), path)):
+            pth = pth.group()
+            new_prefixes = processing_pth(path)
+            if verbose_mode:
+                print(f'py3prov:founded .pth file:{pth}, new prefixes:{new_prefixes}', file=sys.stderr)
+            return new_prefixes
+    return []
 
 
 def files_filter(files, prefixes=sys.path, only_prefix=False,
