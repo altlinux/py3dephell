@@ -36,6 +36,19 @@ class TestPy3Req(unittest.TestCase):
                               [py3req.is_importlib_call(n) for n in ast.walk(ast.parse(inp_out[0]))])
                 self.assertSetEqual(set(outputs), set(inp_out[1]), msg=f'SubTest:{subtest_num} FAILED')
 
+    def test_build_full_qualified_name(self):
+        test_cases = {}
+        test_cases[0] = [{'path': 'pkg1/pkg2/pkg3', 'level': 1},
+                         pathlib.Path('pkg1/pkg2').absolute().as_posix().replace('/', '.')[1:]]
+        test_cases[1] = [{**test_cases[0][0], 'level': 2},
+                         pathlib.Path('pkg1').absolute().as_posix().replace('/', '.')[1:]]
+        test_cases[2] = [{**test_cases[0][0], 'dependency': 'rabbit'},
+                         pathlib.Path('pkg1/pkg2/rabbit').absolute().as_posix().replace('/', '.')[1:]]
+
+        for subtest_num, inp_out in test_cases.items():
+            with self.subTest(msg=f'Testing py3req.build_full_qualified_name subTest:{subtest_num}'):
+                self.assertEqual(py3req.build_full_qualified_name(**inp_out[0]), inp_out[1])
+
 
 if __name__ == '__main__':
     unittest.main()
