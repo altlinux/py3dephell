@@ -1,3 +1,4 @@
+import os
 import sys
 import ast
 import unittest
@@ -9,6 +10,23 @@ parent_dir = pathlib.Path(__file__).parent.parent
 src_dir = parent_dir.joinpath('src')
 sys.path.append(src_dir.as_posix())
 import py3req
+
+
+def generate_somodule(path, name, byte_code):
+    p = pathlib.Path(path).joinpath(f'{name}.so')
+    p.write_bytes(byte_code)
+    return [p]
+
+
+def generate_pymodule(path, name):
+    text = f'try:\n\tfrom . import {name}_friend\n'
+    text += 'except:\n\timport os\n'
+    text += 'importlib = __import__("importlib")\n'
+    text += 'importlib.import_module("ast")\n'
+
+    p = pathlib.Path(path).joinpath(f'{name}.py')
+    p.write_text(text)
+    return [p] + generate_somodule(path, f'{name}_friend', b'\x7fELF\x02')
 
 
 class TestPy3Req(unittest.TestCase):
