@@ -64,6 +64,7 @@ def catch_so(path, stderr):
         bit_depth = get_text(path, size=5)[4]
     except IndexError:
         print(f'py3req.py:Catched error for ELF:{path}, possibly file is empty or broken', file=sys.stderr)
+        bit_depth = None
 
     match bit_depth:
         case 1:
