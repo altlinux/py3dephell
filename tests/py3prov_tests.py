@@ -59,7 +59,7 @@ class TestPy3Prov(unittest.TestCase):
         # Top-module with empty prefixes with allowed wrong names ("-" and "." in names) in absolute mode
         test_cases[4] = [{**test_cases[3][0], 'abs_mode':True}, ['usr.lib64.python3.site-packages.module']]
         for subtest_num, inp_out in test_cases.items():
-            with self.subTest("Testing create_provides_from_path for module"):
+            with self.subTest(f"Testing create_provides_from_path for module subTest:{subtest_num}"):
                 self.assertEqual(py3prov.create_provides_from_path(**inp_out[0]), inp_out[1],
                                  msg=f'SubTest:{subtest_num} FAILED')
 
@@ -81,7 +81,7 @@ class TestPy3Prov(unittest.TestCase):
         test_cases[4] = [{**test_cases[3][0], 'skip_namespace_pkgs': False}, ['mod1', 'pkg.mod1', 'pkg']]
 
         for subtest_num, inp_out in test_cases.items():
-            with self.subTest("Testing create_provides_from_path for packages"):
+            with self.subTest(f"Testing create_provides_from_path for packages subTest:{subtest_num}"):
                 self.assertEqual(py3prov.create_provides_from_path(**inp_out[0]), inp_out[1],
                                  msg=f'SubTest:{subtest_num} FAILED')
 
@@ -99,7 +99,7 @@ class TestPy3Prov(unittest.TestCase):
                          ('/usr/lib64/python3/site-packages', 'mod1.py')]
 
         for subtest_num, inp_out in test_cases.items():
-            with self.subTest("Testing module_detector"):
+            with self.subTest("Testing module_detector subTest:{subtest_num}"):
                 self.assertEqual(py3prov.module_detector(**inp_out[0]), inp_out[1],
                                  msg=f'SubTest:{subtest_num} FAILED')
                 self.assertEqual(py3prov.module_detector(**inp_out[0], verbose_mode=False), inp_out[1],
@@ -125,7 +125,7 @@ class TestPy3Prov(unittest.TestCase):
                           '/usr/lib/python3/site-packages/package/module.py': 'package'}]
 
         for subtest_num, inp_out in test_cases.items():
-            with self.subTest("Testing files_filter"):
+            with self.subTest(f"Testing files_filter subTest:{subtest_num}"):
                 self.assertEqual(py3prov.files_filter(**inp_out[0]), inp_out[1],
                                  msg=f'SubTest:{subtest_num} FAILED')
                 self.assertEqual(py3prov.files_filter(**inp_out[0], verbose_mode=False), inp_out[1],
@@ -143,7 +143,7 @@ class TestPy3Prov(unittest.TestCase):
                          [*test_cases[2][1], 'mod_0_0', 'mod_1_0', '__init__']]
 
         for subtest_num, inp_out in test_cases.items():
-            with self.subTest("Testing search_for_provides"):
+            with self.subTest(f"Testing search_for_provides subTest:{subtest_num}"):
                 self.assertSetEqual(set(py3prov.search_for_provides(**inp_out[0])), set(inp_out[1]),
                                     msg=f'SubTest:{subtest_num} FAILED')
 
@@ -174,7 +174,7 @@ class TestPy3Prov(unittest.TestCase):
                          {'/tmp/pkg_for_generate_provides/mod_0_1.py': provides}]
 
         for subtest_num, inp_out in test_cases.items():
-            with self.subTest("Testing generate_provides"):
+            with self.subTest(f"Testing generate_provides subTest:{subtest_num}"):
                 self.assertDictEqual(py3prov.generate_provides(**inp_out[0]), inp_out[1],
                                      msg=f'SubTest:{subtest_num} FAILED')
 
