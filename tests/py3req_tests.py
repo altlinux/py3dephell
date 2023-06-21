@@ -67,6 +67,42 @@ class TestPy3Req(unittest.TestCase):
             with self.subTest(msg=f'Testing py3req.build_full_qualified_name subTest:{subtest_num}'):
                 self.assertEqual(py3req.build_full_qualified_name(**inp_out[0]), inp_out[1])
 
+    def test_catch_so(self):
+        dep_version = os.getenv('RPM_PYTHON3_VERSION', '%s.%s' % sys.version_info[0:2])
+
+        test_cases = {}
+        test_cases[0] = [b'\x7fELF\x02', f'python{dep_version}-ABI(64bit)']
+        test_cases[1] = [b'\x7fELF\x01', f'python{dep_version}-ABI']
+        test_cases[2] = [b'\x7fELF\x03', None]
+        test_cases[3] = [b'', None]
+
+        for subtest_num, inp_out in test_cases.items():
+            with self.subTest(msg=f'Testing py3req.catch_so subTest:{subtest_num}'):
+                with open('/dev/stderr', 'w') as stderr:
+                    module = generate_somodule('/tmp', 'module.so', inp_out[0])[0]
+                    self.assertEqual(py3req.catch_so(module, stderr), inp_out[1])
+        os.unlink(module)
+
+    def test_find_imports_in_ast(self):
+        test_cases = {}
+        test_cases[0] = [{'code': '__import__("os")\n__import__("ast")\nfrom . import requests\nfrom os import path\n',
+                          'path': '/pkg/module.py', 'Node': None, 'verbose': False, 'skip_subs': False,
+                          'prefix': [], 'only_external_deps': False},
+                         ({'os.path': [4]}, {'pkg.requests': [3]}, {'os': [1], 'ast': [2]}, {})]
+        test_cases[1] = [{**test_cases[0][0], 'path': '/pkg/subpkg/module.py', 'prefix':['/pkg']},
+                         ({'os.path': [4]}, {'subpkg.requests': [3]}, {'os': [1], 'ast': [2]}, {})]
+        test_cases[2] = [{**test_cases[1][0], 'skip_subs': True},
+                         ({'os': [4]}, {'subpkg': [3]}, {'os': [1], 'ast': [2]}, {})]
+        test_cases[3] = [{**test_cases[2][0], 'code': 'try:\n\timport os\nexcept:\n\timport sys',
+                         'only_external_deps': True},
+                         ({}, {}, {}, {'os': [[2]], 'sys': [[[4]]]})]
+
+        for subtest_num, inp_out in test_cases.items():
+            with self.subTest(msg=f'Testing py3req.find_import_in_ast subTest:{subtest_num}'):
+                with open('/dev/null', 'r') as stderr:
+                    self.assertTupleEqual(py3req._find_imports_in_ast(**inp_out[0], stderr=stderr), inp_out[1],
+                                          msg=f'SubTest:{subtest_num} FAILED')
+
 
 if __name__ == '__main__':
     unittest.main()
