@@ -78,7 +78,7 @@ class TestPy3Req(unittest.TestCase):
 
         for subtest_num, inp_out in test_cases.items():
             with self.subTest(msg=f'Testing py3req.catch_so subTest:{subtest_num}'):
-                with open('/dev/stderr', 'w') as stderr:
+                with open('/dev/null', 'w') as stderr:
                     module = generate_somodule('/tmp', 'module.so', inp_out[0])[0]
                     self.assertEqual(py3req.catch_so(module, stderr), inp_out[1])
         os.unlink(module)
@@ -102,6 +102,29 @@ class TestPy3Req(unittest.TestCase):
                 with open('/dev/null', 'r') as stderr:
                     self.assertTupleEqual(py3req._find_imports_in_ast(**inp_out[0], stderr=stderr), inp_out[1],
                                           msg=f'SubTest:{subtest_num} FAILED')
+
+    def test_filter_requirements(self):
+        pref = f'python{sys.version_info[0]}'
+
+        test_cases = {}
+        test_cases[0] = [{'file': None, 'deps': {'os.path': [1], 'sys':[2], 'ast':[3],
+                                                 'friend':[4]}, 'skip_flag': True}, []]
+        test_cases[1] = [{**test_cases[0][0], 'skip_flag': False},
+                         [f'{pref}({mod})' for mod in ['os.path', 'sys', 'ast', 'friend']]]
+        test_cases[2] = [{**test_cases[1][0], 'pip_format': True},
+                         ['os.path', 'sys', 'ast', 'friend']]
+        test_cases[3] = [{**test_cases[2][0], 'ignore_list': ['sys']},
+                         ['os.path', 'ast', 'friend']]
+        test_cases[4] = [{**test_cases[3][0], 'provides': ['friend']},
+                         ['os.path', 'ast']]
+        test_cases[5] = [{**test_cases[4][0], 'only_top_module': True},
+                         ['os', 'ast']]
+
+        for subtest_num, inp_out in test_cases.items():
+            with self.subTest(msg=f'Testing py3req.filter_requirements subTest:{subtest_num}'):
+                with open('/dev/null', 'r') as stderr:
+                    self.assertListEqual(py3req.filter_requirements(**inp_out[0], stderr=stderr), inp_out[1],
+                                         msg=f'SubTest:{subtest_num} FAILED')
 
 
 if __name__ == '__main__':
