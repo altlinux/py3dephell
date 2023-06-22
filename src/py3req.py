@@ -63,7 +63,7 @@ def catch_so(path, stderr):
     try:
         bit_depth = get_text(path, size=5)[4]
     except IndexError:
-        print(f'py3req.py:Catched error for ELF:{path}, possibly file is empty or broken', file=sys.stderr)
+        print(f'py3req.py:Catched error for ELF:{path}, possibly file is empty or broken', file=stderr)
         bit_depth = None
 
     match bit_depth:
@@ -211,19 +211,22 @@ def generate_requirements(files, add_prov_path=[], prefix=[],
             full_provides |= set([prov.rstrip() for prov in f.readlines()])
 
     for module, prov in generate_provides(files, skip_pth=True, deep_search=False,
-                                          abs_mode=False, verbose=verbose, skip_wrong_names=False, skip_namespace_pkgs=False).items():
+                                          abs_mode=False, verbose=verbose, skip_wrong_names=False,
+                                          skip_namespace_pkgs=False).items():
         if prov[-1] is not None:
             modules[module] = prov[-1]
         full_provides |= set(prov[:-1])
 
     for module, prov in generate_provides(files, skip_pth=True, deep_search=False,
-                                          abs_mode=True, verbose=verbose, skip_wrong_names=False, skip_namespace_pkgs=False).items():
+                                          abs_mode=True, verbose=verbose, skip_wrong_names=False,
+                                          skip_namespace_pkgs=False).items():
         if prov[-1] is True:
             modules.add(module)
         abs_provides |= set(prov[:-1])
 
     for path in add_prov_path:
-        prov = search_for_provides(path, find_pth=False, abs_mode=False, skip_wrong_names=False, skip_namespace_pkgs=False)
+        prov = search_for_provides(path, find_pth=False, abs_mode=False, skip_wrong_names=False,
+                                   skip_namespace_pkgs=False)
         add_provides |= set(prov)
 
     for file in files:
