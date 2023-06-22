@@ -1,6 +1,7 @@
 import sys
 import pathlib
 import unittest
+from package import prepare_package, cleanup_package
 
 # Bad solution, need to fix it
 # I hate myself for that
@@ -8,36 +9,6 @@ parent_dir = pathlib.Path(__file__).parent.parent
 src_dir = parent_dir.joinpath('src')
 sys.path.append(src_dir.as_posix())
 import py3prov
-
-
-def prepare_package(path, name, namespace_pkg=False, w_pth=False, level=0):
-    level -= 1
-    p = pathlib.Path(path)
-    pkg = p.joinpath(name)
-    pkg.mkdir()
-
-    if not namespace_pkg:
-        init = pkg.joinpath('__init__.py')
-        init.write_bytes(b'')
-
-    for i in range(2):
-        mod = pkg.joinpath(f'mod_{i}_{level}.py')
-        mod.write_bytes(b'')
-    if w_pth:
-        pth = p.joinpath(f'{name}.pth')
-        pth.write_text(f'{name}\n')
-    if level > 0:
-        return prepare_package(pkg.as_posix(), f'{name}_sub', namespace_pkg, w_pth, level)
-
-
-def cleanup_package(path):
-    p = pathlib.Path(path)
-    if p.is_file() or p.is_symlink():
-        p.unlink()
-    elif p.is_dir():
-        for sub in p.iterdir():
-            cleanup_package(sub)
-        p.rmdir()
 
 
 class TestPy3Prov(unittest.TestCase):
@@ -137,10 +108,10 @@ class TestPy3Prov(unittest.TestCase):
         test_cases[0] = [{'path': '/tmp/pkg_for_searching.pth', 'find_pth': True}, []]
         test_cases[1] = [{**test_cases[0][0], 'prefixes':['/tmp']}, ['/tmp/pkg_for_searching']]
         test_cases[2] = [{'path': '/tmp/pkg_for_searching', 'prefixes': ['/tmp'], 'abs_mode':True},
-                         ['pkg_for_searching', 'pkg_for_searching.mod_0_0',  'pkg_for_searching.mod_1_0',
+                         ['pkg_for_searching', 'pkg_for_searching.mod_0',  'pkg_for_searching.mod_0_lib',
                           'pkg_for_searching.__init__']]
         test_cases[3] = [{**test_cases[2][0], 'abs_mode': False},
-                         [*test_cases[2][1], 'mod_0_0', 'mod_1_0', '__init__']]
+                         [*test_cases[2][1], 'mod_0', 'mod_0_lib', '__init__']]
 
         for subtest_num, inp_out in test_cases.items():
             with self.subTest(f"Testing search_for_provides subTest:{subtest_num}"):
@@ -169,9 +140,9 @@ class TestPy3Prov(unittest.TestCase):
         provides = ['pkg_for_generate_provides.__init__', 'pkg_for_generate_provides', 'pkg_for_generate_provides']
         test_cases[4] = [{**test_cases[0][0], 'prefixes': ['/tmp'], 'abs_mode': True},
                          {'/tmp/pkg_for_generate_provides/__init__.py': provides}]
-        provides = ['mod_0_1', 'pkg_for_generate_provides.mod_0_1', 'pkg_for_generate_provides']
-        test_cases[5] = [{'files': ['/tmp/pkg_for_generate_provides/mod_0_1.py'], 'prefixes': ['/tmp']},
-                         {'/tmp/pkg_for_generate_provides/mod_0_1.py': provides}]
+        provides = ['mod_1', 'pkg_for_generate_provides.mod_1', 'pkg_for_generate_provides']
+        test_cases[5] = [{'files': ['/tmp/pkg_for_generate_provides/mod_1.py'], 'prefixes': ['/tmp']},
+                         {'/tmp/pkg_for_generate_provides/mod_1.py': provides}]
 
         for subtest_num, inp_out in test_cases.items():
             with self.subTest(f"Testing generate_provides subTest:{subtest_num}"):
