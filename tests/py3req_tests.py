@@ -10,7 +10,7 @@ from package import generate_somodule
 parent_dir = pathlib.Path(__file__).parent.parent
 src_dir = parent_dir.joinpath('src')
 sys.path.append(src_dir.as_posix())
-import py3req
+from py3dephell import py3req
 
 
 class TestPy3Req(unittest.TestCase):

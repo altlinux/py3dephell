@@ -8,7 +8,7 @@ import ast
 import shlex
 import argparse
 import pathlib
-from py3prov import generate_provides, search_for_provides
+from .py3prov import generate_provides, search_for_provides
 
 
 def is_import_stmt(node):

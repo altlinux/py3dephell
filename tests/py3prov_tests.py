@@ -8,7 +8,7 @@ from package import prepare_package, cleanup_package
 parent_dir = pathlib.Path(__file__).parent.parent
 src_dir = parent_dir.joinpath('src')
 sys.path.append(src_dir.as_posix())
-import py3prov
+from py3dephell import py3prov
 
 
 class TestPy3Prov(unittest.TestCase):
