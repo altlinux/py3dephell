@@ -71,9 +71,9 @@ class TestPy3Req(unittest.TestCase):
         test_cases = {}
         test_cases[0] = [{'code': '__import__("os")\n__import__("ast")\nfrom . import requests\nfrom os import path\n',
                           'path': '/pkg/module.py', 'Node': None, 'verbose': False, 'skip_subs': False,
-                          'prefix': [], 'only_external_deps': False},
+                          'prefixes': [], 'only_external_deps': False},
                          ({'os.path': [4]}, {'pkg.requests': [3]}, {'os': [1], 'ast': [2]}, {})]
-        test_cases[1] = [{**test_cases[0][0], 'path': '/pkg/subpkg/module.py', 'prefix':['/pkg']},
+        test_cases[1] = [{**test_cases[0][0], 'path': '/pkg/subpkg/module.py', 'prefixes':['/pkg']},
                          ({'os.path': [4]}, {'subpkg.requests': [3]}, {'os': [1], 'ast': [2]}, {})]
         test_cases[2] = [{**test_cases[1][0], 'skip_subs': True},
                          ({'os': [4]}, {'subpkg': [3]}, {'os': [1], 'ast': [2]}, {})]
