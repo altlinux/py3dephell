@@ -1,13 +1,5 @@
-import sys
-import pathlib
 import unittest
 from package import prepare_package, cleanup_package
-
-# Bad solution, need to fix it
-# I hate myself for that
-parent_dir = pathlib.Path(__file__).parent.parent
-src_dir = parent_dir.joinpath('src')
-sys.path.append(src_dir.as_posix())
 from py3dephell import py3prov
 
 
