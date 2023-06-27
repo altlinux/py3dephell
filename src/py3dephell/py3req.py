@@ -213,16 +213,16 @@ def generate_requirements(files, add_prov_path=[], prefixes=sys.path,
     for module, prov in generate_provides(files, skip_pth=True, deep_search=False,
                                           abs_mode=False, verbose=verbose, skip_wrong_names=False,
                                           skip_namespace_pkgs=False).items():
-        if prov[-1] is not None:
-            modules[module] = prov[-1]
-        full_provides |= set(prov[:-1])
+        if prov['package'] is not None:
+            modules[module] = prov['package']
+        full_provides |= set(prov['provides'])
 
     for module, prov in generate_provides(files, skip_pth=True, deep_search=False,
                                           abs_mode=True, verbose=verbose, skip_wrong_names=False,
                                           skip_namespace_pkgs=False).items():
-        if prov[-1] is True:
-            modules.add(module)
-        abs_provides |= set(prov[:-1])
+        if prov['package'] is not None:
+            modules[module] = prov['package']
+        abs_provides |= set(prov['provides'])
 
     for path in add_prov_path:
         prov = search_for_provides(path, find_pth=False, abs_mode=False, skip_wrong_names=False,
@@ -268,7 +268,7 @@ if __name__ == '__main__':
     args = argparse.ArgumentParser(description=description)
     args.add_argument('--add_prov_path', nargs='+', default=[],
                       help='List of additional paths for provides')
-    args.add_argument('--prefixes', default=sys.path,
+    args.add_argument('--prefixes',
                       help='Prefixes that will be removed from full'
                            'qualified name for relative import (string separated by commas)')
     args.add_argument('--ignore_list', nargs='+', default=sys.builtin_module_names,
@@ -287,13 +287,15 @@ if __name__ == '__main__':
     args.add_argument('input', nargs='*',
                       help='List of files from which deps will be created', default=[])
     args = args.parse_args()
+
     if not args.input:
         args.input = shlex.split(sys.stdin.read())
+    prefixes = args.prefixes.split(',') if args.prefixes else sys.path
 
     dependencies = generate_requirements(files=args.input, add_prov_path=args.add_prov_path,
                                          ignore_list=args.ignore_list,
                                          read_prov_from_file=args.read_prov_from_file,
-                                         skip_subs=True, prefixes=args.prefixes.split(','),
+                                         skip_subs=True, prefixes=prefixes,
                                          only_external_deps=args.only_external_deps,
                                          only_top_module=args.only_top_module,
                                          pip_format=args.pip_format, verbose=args.verbose)

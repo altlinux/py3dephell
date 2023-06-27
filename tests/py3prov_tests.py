@@ -117,22 +117,25 @@ class TestPy3Prov(unittest.TestCase):
         prepare_package('/tmp', 'pkg_for_generate_provides', w_pth=True, level=2)
 
         test_cases = {}
-        provides = ['__init__', 'pkg_for_generate_provides.__init__', 'tmp.pkg_for_generate_provides.__init__',
-                    'pkg_for_generate_provides', 'tmp.pkg_for_generate_provides', None]
+        provides = {'provides': ['__init__', 'pkg_for_generate_provides.__init__',
+                                 'tmp.pkg_for_generate_provides.__init__', 'pkg_for_generate_provides',
+                                 'tmp.pkg_for_generate_provides'], 'package': None}
         test_cases[0] = [{'files': ['/tmp/pkg_for_generate_provides/__init__.py'], 'prefixes': []},
                          {'/tmp/pkg_for_generate_provides/__init__.py': provides}]
-        provides = ['tmp.pkg_for_generate_provides.__init__', 'tmp.pkg_for_generate_provides', None]
+        provides = {'provides': ['tmp.pkg_for_generate_provides.__init__', 'tmp.pkg_for_generate_provides'],
+                    'package': None}
         test_cases[1] = [{**test_cases[0][0], 'abs_mode': True},
                          {'/tmp/pkg_for_generate_provides/__init__.py': provides}]
         test_cases[2] = [{'files': ['/tmp/pkg_for_generate_provides'], 'only_prefix':True, 'prefixes': []}, {}]
-        provides = ['__init__', 'pkg_for_generate_provides.__init__', 'pkg_for_generate_provides',
-                    'pkg_for_generate_provides']
+        provides = {'provides': ['__init__', 'pkg_for_generate_provides.__init__', 'pkg_for_generate_provides'],
+                    'package': 'pkg_for_generate_provides'}
         test_cases[3] = [{**test_cases[0][0], 'prefixes': ['/tmp']},
                          {'/tmp/pkg_for_generate_provides/__init__.py': provides}]
-        provides = ['pkg_for_generate_provides.__init__', 'pkg_for_generate_provides', 'pkg_for_generate_provides']
+        provides = {'provides': ['pkg_for_generate_provides.__init__', 'pkg_for_generate_provides'],
+                    'package': 'pkg_for_generate_provides'}
         test_cases[4] = [{**test_cases[0][0], 'prefixes': ['/tmp'], 'abs_mode': True},
                          {'/tmp/pkg_for_generate_provides/__init__.py': provides}]
-        provides = ['mod_1', 'pkg_for_generate_provides.mod_1', 'pkg_for_generate_provides']
+        provides = {'provides': ['mod_1', 'pkg_for_generate_provides.mod_1'], 'package': 'pkg_for_generate_provides'}
         test_cases[5] = [{'files': ['/tmp/pkg_for_generate_provides/mod_1.py'], 'prefixes': ['/tmp']},
                          {'/tmp/pkg_for_generate_provides/mod_1.py': provides}]
 

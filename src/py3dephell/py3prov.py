@@ -223,9 +223,10 @@ def generate_provides(files, prefixes=sys.path, skip_pth=False, only_prefix=Fals
                               deep_search=deep_search, verbose_mode=verbose)
 
     for path, module_name in files_dict.items():
-        provides[path] = search_for_provides(path, prefixes, abs_mode=abs_mode,
-                                             skip_wrong_names=skip_wrong_names, skip_namespace_pkgs=skip_namespace_pkgs)
-        provides[path].append(module_name)
+        provides[path] = {'provides': search_for_provides(path, prefixes, abs_mode=abs_mode,
+                                                          skip_wrong_names=skip_wrong_names,
+                                                          skip_namespace_pkgs=skip_namespace_pkgs),
+                          'package': module_name}
     return provides
 
 
@@ -252,6 +253,6 @@ if __name__ == '__main__':
                                       only_prefix=args.only_prefix, verbose=args.verbose)
     for path, provides in path_provides.items():
         if args.verbose:
-            print(f'{path}:{[prov for prov in provides if isinstance(prov, str)]}')
+            print(f'{path}:{[prov for prov in provides["provides"] if isinstance(prov, str)]}')
         else:
-            print(*[prov for prov in provides if isinstance(prov, str)], sep='\n')
+            print(*[prov for prov in provides['provides'] if isinstance(prov, str)], sep='\n')
