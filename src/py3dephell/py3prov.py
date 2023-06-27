@@ -231,7 +231,7 @@ def generate_provides(files, prefixes=sys.path, skip_pth=False, only_prefix=Fals
 
 if __name__ == '__main__':
     args = argparse.ArgumentParser(description='Search provides for module')
-    args.add_argument('--prefixes', nargs='+', default=sys.path, help='List of prefixes')
+    args.add_argument('--prefixes', help='List of prefixes')
     args.add_argument('--abs_mode', action='store_true',
                       help='Turn on plugin mode (build only absolute provides)')
     args.add_argument('--only_prefix', action='store_true',
@@ -245,7 +245,9 @@ if __name__ == '__main__':
     if not args.input:
         args.input = sys.stdin.read().split()
 
-    path_provides = generate_provides(files=args.input, prefixes=args.prefixes,
+    prefixes = args.prefixes.split(',') if args.prefixes else sys.path
+
+    path_provides = generate_provides(files=args.input, prefixes=prefixes,
                                       skip_pth=args.skip_pth, abs_mode=args.abs_mode,
                                       only_prefix=args.only_prefix, verbose=args.verbose)
     for path, provides in path_provides.items():
