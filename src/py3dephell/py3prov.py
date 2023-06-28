@@ -150,6 +150,8 @@ def search_for_provides(path, prefixes=sys.path, find_pth=False, abs_mode=False,
 
 
 def module_detector(path, prefixes, modules=[], verbose_mode=True):
+    if isinstance(path, Path):
+        path = path.as_posix()
     for pref in sorted(prefixes, key=lambda p: (len(p.split('/')), p), reverse=True):
         if pref and (pref := os.path.normpath(pref)) and path.startswith(pref + '/') and pref != os.path.normpath(path):
             module = re.match(r'%s\/([^\/]+)' % re.escape(pref), path).groups()[0]
@@ -189,6 +191,9 @@ def files_filter(files, prefixes=sys.path, only_prefix=False,
 
     modules = []
     for file in sorted(files, reverse=True):
+        if isinstance(file, Path):
+            file = file.as_posix()
+
         pref, module = module_detector(file, prefixes, modules, verbose_mode)
         if pref and module:
             module_path = re.match(r'%s\/%s(\.py|%s|%s|\/|$)'
