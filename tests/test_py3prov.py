@@ -6,21 +6,21 @@ from py3dephell import py3prov
 class TestPy3Prov(unittest.TestCase):
     def test_create_provides_from_path_for_module(self):
         # Top-module
-        test_cases = {0: [{'path': '/usr/lib64/python3/site-packages/module.py'}, ['module']]}
+        test_cases = {0: [{'path': '/sys_path/bad-symbol/module.py', 'prefixes': ['/sys_path/bad-symbol']},
+                          ['module']]}
 
-        # Top-module with empty prefixes
+        # Top-module with empty prefixes, but with bad-caracter in path
         test_cases[1] = [{**test_cases[0][0], 'prefixes': []}, ['module']]
 
-        # Top-module with empty prefixes and in abs_mode
+        # Top-module with empty prefixes, bad-caracter in path and in abs_mode
         test_cases[2] = [{**test_cases[1][0], 'abs_mode': True}, []]
 
         # Top-module with empty prefixes with allowed wrong names ("-" and "." in names)
         test_cases[3] = [{**test_cases[1][0], 'skip_wrong_names':False},
-                         ['module', 'site-packages.module', 'python3.site-packages.module',
-                          'lib64.python3.site-packages.module', 'usr.lib64.python3.site-packages.module']]
+                         ['module', 'bad-symbol.module', 'sys_path.bad-symbol.module']]
 
         # Top-module with empty prefixes with allowed wrong names ("-" and "." in names) in absolute mode
-        test_cases[4] = [{**test_cases[3][0], 'abs_mode':True}, ['usr.lib64.python3.site-packages.module']]
+        test_cases[4] = [{**test_cases[3][0], 'abs_mode':True}, ['sys_path.bad-symbol.module']]
         for subtest_num, inp_out in test_cases.items():
             with self.subTest(f"Testing create_provides_from_path for module subTest:{subtest_num}"):
                 self.assertEqual(py3prov.create_provides_from_path(**inp_out[0]), inp_out[1],
@@ -28,17 +28,17 @@ class TestPy3Prov(unittest.TestCase):
 
     def test_create_provides_from_path_for_pkg(self):
         # Module from regular package
-        test_cases = {0: [{'path': '/usr/lib64/python3/site-packages/pkg/__init__.py'},
+        test_cases = {0: [{'path': '/sys_path/bad-symbol/pkg/__init__.py', 'prefixes': ['/sys_path/bad-symbol']},
                           ['__init__', 'pkg.__init__', 'pkg']]}
 
         # Module from regular package but with strange prefix
-        test_cases[1] = [{**test_cases[0][0], 'prefixes': ['/usr/lib64/python3/site-packages/pkg/']}, ['__init__']]
+        test_cases[1] = [{**test_cases[0][0], 'prefixes': ['/sys_path/bad-symbol/pkg/']}, ['__init__']]
 
         # Set special flag to indicate that is the package
-        test_cases[2] = [{'path': '/usr/lib64/python3/site-packages/pkg/', 'pkg_mode': True}, ['pkg']]
+        test_cases[2] = [{'path': '/sys_path/bad-symbol/pkg/', 'pkg_mode': True}, ['pkg']]
 
         # Check provides for namespace package
-        test_cases[3] = [{'path': '/usr/lib64/python3/site-packages/pkg/mod1.py'}, ['mod1', 'pkg.mod1']]
+        test_cases[3] = [{'path': '/sys_path/bad-symbol/pkg/mod1.py'}, ['mod1', 'pkg.mod1']]
 
         # Check provides for namespace package (turned off ingnoring flag)
         test_cases[4] = [{**test_cases[3][0], 'skip_namespace_pkgs': False}, ['mod1', 'pkg.mod1', 'pkg']]
@@ -49,17 +49,25 @@ class TestPy3Prov(unittest.TestCase):
                                  msg=f'SubTest:{subtest_num} FAILED')
 
     def test_module_detector(self):
-        test_cases = {0: [{'path': '/usr/lib64/python3/site-packages/pkg/mod1.py',
-                           'prefixes': ['/usr/lib64/python3/site-packages/', '/', '']},
-                          ('/usr/lib64/python3/site-packages', 'pkg')]}
-        test_cases[1] = [{**test_cases[0][0], 'prefixes': ['/usr/lib64/python3/site-packages', '/', '']},
-                         ('/usr/lib64/python3/site-packages', 'pkg')]
-        test_cases[2] = [{**test_cases[0][0], 'prefixes': ['/usr/lib64/python3/site-package', '/', '']},
+        # 1 good prefix, 2 bad
+        test_cases = {0: [{'path': '/sys_path/pkg/mod1.py',
+                           'prefixes': ['/sys_path/', '/', '']},
+                          ('/sys_path', 'pkg')]}
+
+        # Same as previos, but without slash in the end of good prefix
+        test_cases[1] = [{**test_cases[0][0], 'prefixes': ['/sys_path', '/', '']},
+                         ('/sys_path', 'pkg')]
+
+        # All prefixes are bad
+        test_cases[2] = [{**test_cases[0][0], 'prefixes': ['/bad_prefix', '/', '']},
                          (None, None)]
+        # Same as 1 test, but with pkg in modules list, to check verbosity
         test_cases[3] = [{**test_cases[1][0], 'modules': ['pkg']},
-                         ('/usr/lib64/python3/site-packages', 'pkg')]
-        test_cases[4] = [{**test_cases[1][0], 'path': '/usr/lib64/python3/site-packages/mod1.py'},
-                         ('/usr/lib64/python3/site-packages', 'mod1.py')]
+                         ('/sys_path', 'pkg')]
+
+        # Catching top module (without package)
+        test_cases[4] = [{**test_cases[1][0], 'path': '/sys_path/mod1.py'},
+                         ('/sys_path', 'mod1.py')]
 
         for subtest_num, inp_out in test_cases.items():
             with self.subTest("Testing module_detector subTest:{subtest_num}"):
@@ -75,17 +83,22 @@ class TestPy3Prov(unittest.TestCase):
         cleanup_package('/tmp/pkg_for_pth.pth')
 
     def test_files_filter(self):
-        non_pref = ['/usr/src/top_mod.py', '/usr/src/pkg', '/usr/src/pkg/mod.py']
-        under_pref = ['/usr/lib/top_module.py', '/usr/lib/python3/site-packages/package/',
-                      '/usr/lib/python3/site-packages/package/module.py', '/usr/lib/top_pkg']
+        non_pref = ['/non_pref/top_mod.py', '/non_pref/pkg', '/non_pref/pkg/mod.py']
+        under_pref = ['/libs_pref/top_module.py', '/pkgs_pref/package/',
+                      '/pkgs_pref/package/module.py', '/libs_pref/top_pkg']
         test_cases = {}
+        # No prefixes and path should be under prefixes, should return empty list
         test_cases[0] = [{'files': non_pref + under_pref, 'prefixes': [], 'only_prefix': True}, {}]
+
+        # Same as previous test but path should not be under prefixes
         test_cases[1] = [{**test_cases[0][0], 'only_prefix': False}, {p: None for p in non_pref + under_pref}]
-        test_cases[2] = [{**test_cases[0][0], 'prefixes': ['/usr/lib', '/usr/lib/python3/site-packages/']},
-                         {'/usr/lib/top_module.py': 'top_module.py',
-                          '/usr/lib/top_pkg': 'top_pkg',
-                          '/usr/lib/python3/site-packages/package/': 'package',
-                          '/usr/lib/python3/site-packages/package/module.py': 'package'}]
+
+        # Good prefixes
+        test_cases[2] = [{**test_cases[0][0], 'prefixes': ['/libs_pref', '/pkgs_pref/']},
+                         {'/libs_pref/top_module.py': 'top_module.py',
+                          '/libs_pref/top_pkg': 'top_pkg',
+                          '/pkgs_pref/package/': 'package',
+                          '/pkgs_pref/package/module.py': 'package'}]
 
         for subtest_num, inp_out in test_cases.items():
             with self.subTest(f"Testing files_filter subTest:{subtest_num}"):
