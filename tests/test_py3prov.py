@@ -1,6 +1,13 @@
+import pathlib
 import unittest
 from package import prepare_package, cleanup_package
 from py3dephell import py3prov
+
+
+# Prepare directory for packages
+cleanup_package('tests_packages')
+tests_packages = pathlib.Path('tests_packages')
+tests_packages.mkdir()
 
 
 class TestPy3Prov(unittest.TestCase):
@@ -77,10 +84,9 @@ class TestPy3Prov(unittest.TestCase):
                                  msg=f'SubTest:{subtest_num} FAILED')
 
     def test_processing_pth(self):
-        prepare_package('/tmp', 'pkg_for_pth', w_pth=True, level=1)
-        self.assertEqual(py3prov.processing_pth('/tmp/pkg_for_pth.pth'), ['/tmp/pkg_for_pth'])
-        cleanup_package('/tmp/pkg_for_pth')
-        cleanup_package('/tmp/pkg_for_pth.pth')
+        prepare_package(tests_packages, 'pkg_for_pth', w_pth=True, level=1)
+        self.assertEqual(py3prov.processing_pth(tests_packages.joinpath('pkg_for_pth.pth')),
+                         ['tests_packages/pkg_for_pth'])
 
     def test_files_filter(self):
         non_pref = ['/non_pref/top_mod.py', '/non_pref/pkg', '/non_pref/pkg/mod.py']
@@ -108,11 +114,13 @@ class TestPy3Prov(unittest.TestCase):
                                  msg=f'SubTest:{subtest_num} FAILED')
 
     def test_search_for_provides(self):
-        prepare_package('/tmp', 'pkg_for_searching', w_pth=True, level=1)
+        prepare_package(tests_packages, 'pkg_for_searching', w_pth=True, level=1)
         test_cases = {}
-        test_cases[0] = [{'path': '/tmp/pkg_for_searching.pth', 'find_pth': True}, []]
-        test_cases[1] = [{**test_cases[0][0], 'prefixes':['/tmp']}, ['/tmp/pkg_for_searching']]
-        test_cases[2] = [{'path': '/tmp/pkg_for_searching', 'prefixes': ['/tmp'], 'abs_mode':True},
+        test_cases[0] = [{'path': tests_packages.joinpath('pkg_for_searching.pth'), 'find_pth': True}, []]
+        test_cases[1] = [{**test_cases[0][0], 'prefixes':[tests_packages.as_posix()]},
+                         [tests_packages.joinpath('pkg_for_searching').as_posix()]]
+        test_cases[2] = [{'path': tests_packages.joinpath('pkg_for_searching'), 'prefixes': [tests_packages.as_posix()],
+                          'abs_mode':True},
                          ['pkg_for_searching', 'pkg_for_searching.mod_0',  'pkg_for_searching.mod_0_lib',
                           'pkg_for_searching.__init__']]
         test_cases[3] = [{**test_cases[2][0], 'abs_mode': False},
@@ -123,42 +131,41 @@ class TestPy3Prov(unittest.TestCase):
                 self.assertSetEqual(set(py3prov.search_for_provides(**inp_out[0])), set(inp_out[1]),
                                     msg=f'SubTest:{subtest_num} FAILED')
 
-        cleanup_package('/tmp/pkg_for_searching')
-        cleanup_package('/tmp/pkg_for_searching.pth')
-
     def test_generate_provides(self):
-        prepare_package('/tmp', 'pkg_for_generate_provides', w_pth=True, level=2)
+        prepare_package(tests_packages, 'pkg_for_generate_provides', w_pth=True, level=2)
 
         test_cases = {}
+        test_pkg_provides = '.'.join(filter(lambda x: x != '/', tests_packages.parts))
         provides = {'provides': ['__init__', 'pkg_for_generate_provides.__init__',
-                                 'tmp.pkg_for_generate_provides.__init__', 'pkg_for_generate_provides',
-                                 'tmp.pkg_for_generate_provides'], 'package': None}
-        test_cases[0] = [{'files': ['/tmp/pkg_for_generate_provides/__init__.py'], 'prefixes': []},
-                         {'/tmp/pkg_for_generate_provides/__init__.py': provides}]
-        provides = {'provides': ['tmp.pkg_for_generate_provides.__init__', 'tmp.pkg_for_generate_provides'],
+                                 f'{test_pkg_provides}.pkg_for_generate_provides.__init__', 'pkg_for_generate_provides',
+                                 f'{test_pkg_provides}.pkg_for_generate_provides'], 'package': None}
+        test_cases[0] = [{'files': [tests_packages.joinpath('pkg_for_generate_provides/__init__.py')], 'prefixes': []},
+                         {tests_packages.joinpath('pkg_for_generate_provides/__init__.py').as_posix(): provides}]
+        provides = {'provides': [f'{test_pkg_provides}.pkg_for_generate_provides.__init__',
+                                 f'{test_pkg_provides}.pkg_for_generate_provides'],
                     'package': None}
         test_cases[1] = [{**test_cases[0][0], 'abs_mode': True},
-                         {'/tmp/pkg_for_generate_provides/__init__.py': provides}]
-        test_cases[2] = [{'files': ['/tmp/pkg_for_generate_provides'], 'only_prefix':True, 'prefixes': []}, {}]
+                         {tests_packages.joinpath('pkg_for_generate_provides/__init__.py').as_posix(): provides}]
+        test_cases[2] = [{'files': [tests_packages.joinpath('pkg_for_generate_provides')], 'only_prefix':True,
+                          'prefixes': []},
+                         {}]
         provides = {'provides': ['__init__', 'pkg_for_generate_provides.__init__', 'pkg_for_generate_provides'],
                     'package': 'pkg_for_generate_provides'}
-        test_cases[3] = [{**test_cases[0][0], 'prefixes': ['/tmp']},
-                         {'/tmp/pkg_for_generate_provides/__init__.py': provides}]
+        test_cases[3] = [{**test_cases[0][0], 'prefixes': [tests_packages.as_posix()]},
+                         {tests_packages.joinpath('pkg_for_generate_provides/__init__.py').as_posix(): provides}]
         provides = {'provides': ['pkg_for_generate_provides.__init__', 'pkg_for_generate_provides'],
                     'package': 'pkg_for_generate_provides'}
-        test_cases[4] = [{**test_cases[0][0], 'prefixes': ['/tmp'], 'abs_mode': True},
-                         {'/tmp/pkg_for_generate_provides/__init__.py': provides}]
+        test_cases[4] = [{**test_cases[0][0], 'prefixes': [tests_packages.as_posix()], 'abs_mode': True},
+                         {tests_packages.joinpath('pkg_for_generate_provides/__init__.py').as_posix(): provides}]
         provides = {'provides': ['mod_1', 'pkg_for_generate_provides.mod_1'], 'package': 'pkg_for_generate_provides'}
-        test_cases[5] = [{'files': ['/tmp/pkg_for_generate_provides/mod_1.py'], 'prefixes': ['/tmp']},
-                         {'/tmp/pkg_for_generate_provides/mod_1.py': provides}]
+        test_cases[5] = [{'files': [tests_packages.joinpath('pkg_for_generate_provides/mod_1.py')],
+                          'prefixes': [tests_packages.as_posix()]},
+                         {tests_packages.joinpath('pkg_for_generate_provides/mod_1.py').as_posix(): provides}]
 
         for subtest_num, inp_out in test_cases.items():
             with self.subTest(f"Testing generate_provides subTest:{subtest_num}"):
                 self.assertDictEqual(py3prov.generate_provides(**inp_out[0]), inp_out[1],
                                      msg=f'SubTest:{subtest_num} FAILED')
-
-        cleanup_package('/tmp/pkg_for_generate_provides')
-        cleanup_package('/tmp/pkg_for_generate_provides.pth')
 
 
 if __name__ == '__main__':
