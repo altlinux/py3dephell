@@ -210,14 +210,14 @@ def generate_requirements(files, add_prov_path=[], prefixes=sys.path,
         with open(read_prov_from_file) as f:
             full_provides |= set([prov.rstrip() for prov in f.readlines()])
 
-    for module, prov in generate_provides(files, skip_pth=True, deep_search=False,
+    for module, prov in generate_provides(files, skip_pth=True, deep_search=False, prefixes=prefixes,
                                           abs_mode=False, verbose=verbose, skip_wrong_names=False,
                                           skip_namespace_pkgs=False).items():
         if prov['package'] is not None:
             modules[module] = prov['package']
         full_provides |= set(prov['provides'])
 
-    for module, prov in generate_provides(files, skip_pth=True, deep_search=False,
+    for module, prov in generate_provides(files, skip_pth=True, deep_search=False, prefixes=prefixes,
                                           abs_mode=True, verbose=verbose, skip_wrong_names=False,
                                           skip_namespace_pkgs=False).items():
         if prov['package'] is not None:
