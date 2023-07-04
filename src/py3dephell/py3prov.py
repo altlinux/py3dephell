@@ -156,7 +156,7 @@ def module_detector(path, prefixes, modules=[], verbose_mode=True):
         if pref and (pref := os.path.normpath(pref)) and path.startswith(pref + '/') and pref != os.path.normpath(path):
             module = re.match(r'%s\/([^\/]+)' % re.escape(pref), path).groups()[0]
             if verbose_mode and module not in modules:
-                print(f'py3prov: detected potentional module:{module}', file=sys.stderr)
+                print(f'py3prov: detected potential module:{module}', file=sys.stderr)
             return pref, module
     return None, None
 
