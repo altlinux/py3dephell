@@ -235,7 +235,7 @@ def generate_provides(files, prefixes=sys.path, skip_pth=False, only_prefix=Fals
     return provides
 
 
-if __name__ == '__main__':
+def main():
     args = argparse.ArgumentParser(description='Search provides for module')
     args.add_argument('--prefixes', help='List of prefixes')
     args.add_argument('--abs_mode', action='store_true',
@@ -261,3 +261,7 @@ if __name__ == '__main__':
             print(f'{path}:{[prov for prov in provides["provides"] if isinstance(prov, str)]}')
         else:
             print(*[prov for prov in provides['provides'] if isinstance(prov, str)], sep='\n')
+
+
+if __name__ == '__main__':
+    sys.exit(main())

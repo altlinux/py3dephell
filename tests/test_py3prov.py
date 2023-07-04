@@ -164,7 +164,7 @@ class TestPy3Prov(unittest.TestCase):
         test_cases[0] = [{'files': [self.tests_packages.joinpath('pkg_for_generate_provides/__init__.py')],
                           'prefixes': []},
                          {self.tests_packages.joinpath('pkg_for_generate_provides/__init__.py').as_posix(): provides}]
-        provides = {'provides': list(filter(lambda x: '.' in x, [prov_w_init, prov_wo_init])),
+        provides = {'provides': list(filter(lambda x: '.' in x, [max(prov_w_init), max(prov_wo_init)])),
                     'package': None}
         test_cases[1] = [{**test_cases[0][0], 'abs_mode': True},
                          {self.tests_packages.joinpath('pkg_for_generate_provides/__init__.py').as_posix(): provides}]

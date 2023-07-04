@@ -263,7 +263,7 @@ def generate_requirements(files, add_prov_path=[], prefixes=sys.path,
     return dependencies
 
 
-if __name__ == '__main__':
+def main():
     description = 'Search for requiremnts for pyfile'
     args = argparse.ArgumentParser(description=description)
     args.add_argument('--add_prov_path', nargs='+', default=[],
@@ -305,3 +305,7 @@ if __name__ == '__main__':
             print(f'{file}:{" ".join([" ".join(req) for req in deps if req])}')
         elif any(deps):
             print('\n'.join(['\n'.join(req) for req in deps if req]))
+
+
+if __name__ == '__main__':
+    sys.exit(main())
