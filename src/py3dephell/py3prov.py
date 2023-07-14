@@ -1,10 +1,10 @@
 #! /usr/bin/env python3
 
 import os
-import sys
 import re
-import sysconfig
+import sys
 import argparse
+import sysconfig
 from pathlib import Path
 
 
@@ -113,7 +113,7 @@ def create_provides_from_path(path, prefixes=sys.path, abs_mode=False,
     return provides
 
 
-def search_for_provides(path, prefixes=sys.path, find_pth=False, abs_mode=False,
+def search_for_provides(path, prefixes=sys.path, abs_mode=False,
                         skip_wrong_names=True, skip_namespace_pkgs=True):
     '''
     This function walks through given path, detect .pth and search for provides
@@ -121,32 +121,18 @@ def search_for_provides(path, prefixes=sys.path, find_pth=False, abs_mode=False,
     Arguments:
     path - given path
     prefixes - list of prefixes which will be used in "create_provides_from_path()"
-    find_pth - search for .pth and change provides (and prefixes) according to them
     abs_mode - flag that will be used in "create_provides_from_path()"
     '''
-    if find_pth:
-        new_prefixes = []
-    else:
-        provides = []
+    provides = []
     path = Path(path)
 
     if path.is_file() or path.is_symlink():
-        if find_pth and path.suffix == '.pth':
-            return pth_detector(path.as_posix(), prefixes=prefixes)
-        elif find_pth:
-            return []
-        else:
-            return create_provides_from_path(path.as_posix(), prefixes, abs_mode=abs_mode,
-                                             skip_wrong_names=skip_wrong_names, skip_namespace_pkgs=skip_namespace_pkgs)
+        return create_provides_from_path(path.as_posix(), prefixes, abs_mode=abs_mode,
+                                         skip_wrong_names=skip_wrong_names, skip_namespace_pkgs=skip_namespace_pkgs)
     elif path.is_dir() and '__pycache__' not in path.as_posix():
         for subpath in path.iterdir():
-            if find_pth and (subpath := subpath.as_posix()):
-                new_prefixes += search_for_provides(subpath, prefixes, find_pth,
-                                                    abs_mode=abs_mode)
-            elif (subpath := subpath.as_posix()):
-                provides += search_for_provides(subpath, prefixes, find_pth,
-                                                abs_mode=abs_mode)
-    return new_prefixes if find_pth else provides
+            provides += search_for_provides(subpath, prefixes, abs_mode, skip_wrong_names, skip_namespace_pkgs)
+    return provides
 
 
 def module_detector(path, prefixes, modules=[], verbose_mode=True):
@@ -161,16 +147,27 @@ def module_detector(path, prefixes, modules=[], verbose_mode=True):
     return None, None
 
 
-def pth_detector(path, prefixes, verbose_mode=False):
-    for pref in sorted(prefixes, key=lambda p: (len(p.split('/')), p), reverse=True):
-        if pref and (pref := os.path.normpath(pref)) and\
-           (pth := re.match(r'%s\/([^\/]+)\.pth' % re.escape(pref), path)):
-            pth = pth.group()
-            new_prefixes = processing_pth(path)
+def pth_detector(pathes, verbose_mode=False):
+    new_prefixes = []
+    for path in pathes:
+        path = Path(path)
+        if not path.exists():
             if verbose_mode:
-                print(f'py3prov:founded .pth file:{pth}, new prefixes:{new_prefixes}', file=sys.stderr)
-            return new_prefixes
-    return []
+                print(f'Path {path} does not exist, skip it', file=sys.stderr)
+            continue
+        if path.suffix == '.pth':
+            if verbose_mode:
+                print(f'Detected .pth file:{path.absolute().as_posix()}', file=sys.stderr)
+            new_prefixes += processing_pth(path.absolute().as_posix())
+        elif path.is_dir():
+            for item in path.iterdir():
+                if item.suffix == '.pth':
+                    print(f'Detected .pth file:{item.absolute().as_posix()}', file=sys.stderr)
+                    new_prefixes += processing_pth(item.absolute().as_posix())
+        else:
+            if verbose_mode:
+                print(f'Path {path} is not a directory or .pth file, skip it', file=sys.stderr)
+    return new_prefixes
 
 
 def files_filter(files, prefixes=sys.path, only_prefix=False,
@@ -218,12 +215,6 @@ def generate_provides(files, prefixes=sys.path, skip_pth=False, only_prefix=Fals
                       deep_search=False, abs_mode=False, verbose=True,
                       skip_wrong_names=True, skip_namespace_pkgs=True):
     provides = {}
-    if not skip_pth:
-        pth = set()
-        for path in files:
-            pth |= set(search_for_provides(path, prefixes, find_pth=True))
-        provides.update(files_filter(pth, [os.path.split(pref)[0] for pref in pth],
-                                     only_prefix=only_prefix, verbose_mode=verbose))
     files_dict = files_filter(files.copy(), prefixes=prefixes, only_prefix=only_prefix,
                               deep_search=deep_search, verbose_mode=verbose)
 
@@ -232,6 +223,24 @@ def generate_provides(files, prefixes=sys.path, skip_pth=False, only_prefix=Fals
                                                           skip_wrong_names=skip_wrong_names,
                                                           skip_namespace_pkgs=skip_namespace_pkgs),
                           'package': module_name}
+
+    if not skip_pth:
+        pth = set()
+        for path in files:
+            pth |= set(pth_detector(prefixes, verbose))
+        prefixes += list(pth)
+        new_provides = generate_provides(files, prefixes, True, only_prefix, deep_search, abs_mode, verbose,
+                                         skip_wrong_names, skip_namespace_pkgs)
+        for key, new_provs in new_provides.items():
+            if key in provides:
+                if abs_mode:
+                    provides[key]['provides'] += [new for new in new_provs['provides']
+                                                 if new not in provides[key]['provides']]
+                if not provides[key]['package']:
+                    provides[key]['package'] = new_provs['package']
+            else:
+                provides.update({key: new_provs})
+
     return provides
 
 

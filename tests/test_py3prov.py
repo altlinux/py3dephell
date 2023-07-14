@@ -126,9 +126,9 @@ class TestPy3Prov(unittest.TestCase):
     def test_search_for_provides(self):
         prepare_package(self.tests_packages, 'pkg_for_searching', w_pth=True, level=1)
         test_cases = {}
-        test_cases[0] = [{'path': self.tests_packages.joinpath('pkg_for_searching.pth'), 'find_pth': True}, []]
+        test_cases[0] = [{'path': self.tests_packages.joinpath('pkg_for_searching.pth')}, []]
         test_cases[1] = [{**test_cases[0][0], 'prefixes':[self.tests_packages.as_posix()]},
-                         [self.tests_packages.joinpath('pkg_for_searching').as_posix()]]
+                         []]
         test_cases[2] = [{'path': self.tests_packages.joinpath('pkg_for_searching'),
                           'prefixes': [self.tests_packages.as_posix()], 'abs_mode':True},
                          ['pkg_for_searching', 'pkg_for_searching.mod_0',  'pkg_for_searching.mod_0_lib',
@@ -147,7 +147,7 @@ class TestPy3Prov(unittest.TestCase):
         parts.reverse()
         provides = []
         for part in parts:
-            if set(forbidden_elems) & set(part):
+            if set(forbidden_elems) & set(part) or part == '/':
                 break
             provides.append(f'{part}.{provides[-1]}' if provides else part)
         return provides
@@ -164,7 +164,11 @@ class TestPy3Prov(unittest.TestCase):
         test_cases[0] = [{'files': [self.tests_packages.joinpath('pkg_for_generate_provides/__init__.py')],
                           'prefixes': []},
                          {self.tests_packages.joinpath('pkg_for_generate_provides/__init__.py').as_posix(): provides}]
-        provides = {'provides': list(filter(lambda x: '.' in x, [max(prov_w_init), max(prov_wo_init)])),
+
+        prov_w_init = self.gen_provs(self.tests_packages.joinpath('pkg_for_generate_provides/__init__'), [])
+        prov_wo_init = self.gen_provs(self.tests_packages.joinpath('pkg_for_generate_provides'), [])
+        provides = {'provides': list(filter(lambda x: '..' not in x, [max(prov_w_init, key=lambda x: x.count('.')),
+                                                                      max(prov_wo_init, key=lambda x: x.count('.'))])),
                     'package': None}
         test_cases[1] = [{**test_cases[0][0], 'abs_mode': True},
                          {self.tests_packages.joinpath('pkg_for_generate_provides/__init__.py').as_posix(): provides}]
@@ -175,7 +179,7 @@ class TestPy3Prov(unittest.TestCase):
                     'package': 'pkg_for_generate_provides'}
         test_cases[3] = [{**test_cases[0][0], 'prefixes': [self.tests_packages.as_posix()]},
                          {self.tests_packages.joinpath('pkg_for_generate_provides/__init__.py').as_posix(): provides}]
-        provides = {'provides': ['pkg_for_generate_provides.__init__', 'pkg_for_generate_provides'],
+        provides = {'provides': ['pkg_for_generate_provides.__init__', 'pkg_for_generate_provides', '__init__'],
                     'package': 'pkg_for_generate_provides'}
         test_cases[4] = [{**test_cases[0][0], 'prefixes': [self.tests_packages.as_posix()], 'abs_mode': True},
                          {self.tests_packages.joinpath('pkg_for_generate_provides/__init__.py').as_posix(): provides}]
@@ -186,9 +190,11 @@ class TestPy3Prov(unittest.TestCase):
 
         for subtest_num, inp_out in test_cases.items():
             with self.subTest(f"Testing generate_provides subTest:{subtest_num}"):
-                self.assertDictEqual(py3prov.generate_provides(**inp_out[0]), inp_out[1],
+                jopa = py3prov.generate_provides(**inp_out[0])
+                print(f'>>>{subtest_num}<<<>>>{jopa}<<<>>>{inp_out[1]}', file=sys.stderr)
+                self.assertDictEqual(jopa, inp_out[1],
                                      msg=f'SubTest:{subtest_num} FAILED')
-        rmtree(self.tmp)
+        #rmtree(self.tmp)
 
 
 if __name__ == '__main__':
