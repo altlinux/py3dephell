@@ -76,7 +76,7 @@ def create_provides_from_path(path, prefixes=sys.path, abs_mode=False,
 
     for suffix in sorted([so_suffix, shlib_suffix, soabi, soabi3, '.py', abi3], key=lambda p: len(p), reverse=True):
         if parts[-1].endswith(suffix):
-            parts[-1] = parts[-1].replace(suffix, '')
+            parts[-1] = parts[-1].replace(suffix, '', 1)
             module = True
             break
     else:
@@ -89,20 +89,16 @@ def create_provides_from_path(path, prefixes=sys.path, abs_mode=False,
         if '.' in parts[-1]:
             print(f'py3prov: bad name for provides from path:{path.as_posix()}', file=sys.stderr)
 
-        if abs_mode and ('-' not in (provide := '.'.join(parts)) and '.' not in '/'.join(parts[:-1])
-                         or not skip_wrong_names):
-            provides.append(provide)
+        if abs_mode and (all([part.isidentifier() for part in parts]) or not skip_wrong_names):
+            provides.append('.'.join(parts))
         elif not abs_mode:
             while parts:
+                if not parts[-1].isidentifier() and skip_wrong_names:
+                    break
                 if len(provides) > 0:
-                    if '.' in parts[-1] and skip_wrong_names:
-                        break
                     provides.append(f'{parts.pop()}.{provides[-1]}')
                 else:
                     provides.append(parts.pop())
-                if '-' in provides[-1] and skip_wrong_names:
-                    provides = provides[:-1]
-                    break
 
     parent = path.parent
 
