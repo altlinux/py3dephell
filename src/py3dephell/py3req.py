@@ -12,6 +12,9 @@ from .py3prov import generate_provides, search_for_provides
 
 
 def is_import_stmt(node):
+    '''
+    Checks if statement is builtin import method - __init__()
+    '''
     if type(node) == ast.Call and type(node.func) == ast.Name\
        and node.func.id == '__import__' and node.args\
        and type(node.args[0]) == ast.Constant:
@@ -19,6 +22,10 @@ def is_import_stmt(node):
 
 
 def is_importlib_call(node):
+    '''
+    Checks if statement is import function from module importlib -
+    importlib.import_module()
+    '''
     if type(node) == ast.Call and type(node.func) == ast.Attribute\
             and type(node.func.value) == ast.Name\
             and node.func.value.id == 'importlib'\
@@ -28,6 +35,20 @@ def is_importlib_call(node):
 
 
 def build_full_qualified_name(path, level, dependency=None, prefixes=[]):
+    '''
+    Creates fully qualified name for the specified dependency name (usefull for relative imports)
+
+    :param path: path to file with relative import
+    :type path: str or pathlib.Path
+    :param level: level of import (number of leading dots)
+    :type level: int
+    :param dependency: dependency name
+    :type depdendency: int
+    :param prefixes: list of prefixes by which the path will be trimmed
+    :type prefixes: list[str] or list[pathlib.Path]
+    :return: dependency name
+    :rtype: str
+    '''
     parent_path = pathlib.Path(path).absolute().parts[1:-level]
     parent_path = ''.join(f'/{p}' for p in parent_path)
     for pref in sorted(prefixes, key=lambda k: len(k.split('/')), reverse=True):
@@ -41,6 +62,19 @@ def build_full_qualified_name(path, level, dependency=None, prefixes=[]):
 
 
 def get_text(path, size=-1, verbose=False):
+    '''
+    Returns text for giving path
+    (will be hidden soon)
+
+    :param path: path to the file
+    :type path: str or pathlib.Path
+    :param size: number of bytes to read
+    :type size: int
+    :param verbose: turn on verbose mode
+    :type verbose: Bool
+    :return: bytes from file or None if one of known exceptions occures
+    :rtype: bytes or None
+    '''
     try:
         with open(path, mode='rb') as f:
             return f.read(size)
@@ -59,6 +93,15 @@ def get_text(path, size=-1, verbose=False):
 
 
 def catch_so(path, stderr):
+    '''
+    Process ELF and returns python3-ABI dependency
+    :param path: path to ELF file
+    :type path: str or pathlib.Path
+    :param stderr: stderr (io)
+    :type stderr: io
+    :return: python3-ABI dependency
+    :rtype: str or None
+    '''
     dep_version = os.getenv('RPM_PYTHON3_VERSION', '%s.%s' % sys.version_info[0:2])
     try:
         bit_depth = get_text(path, size=5)[4]
@@ -131,6 +174,26 @@ def _find_imports_in_ast(path, code, Node, prefixes, only_external_deps,
 
 def read_ast_tree(path, code=None, prefixes=[], only_external_deps=False,
                   skip_subs=True, stderr=sys.stderr, verbose=True):
+    '''
+    Read AST for code from given path or even code and detect dependencies
+
+    :param path: path to the file
+    :type path: str or pathlib.Path
+    :param code: code from script
+    :type code: AST body
+    :param prefixes: list of prefixes by which the path will be trimmed
+    :type prefixes: list[str] or list[pathlib.Path]
+    :param only_external_deps: skip capsulated import statements
+    :type only_external_deps: Bool
+    :path skip_subs: skip dependecy attribute (skip B for "from A import B")
+    :type skip_subs: Bool
+    :param stderr: error stream
+    :type stderr: io
+    :param verbose: turn on verbose flag
+    :type verbose: Bool
+    :return: tuple of dictionaries for absolute, relative, advanced (__import__ stmt) and skipped dependncies
+    :rtype: tuple({}, {}, {}, {})
+    '''
     if not code and not (code := get_text(path)):
         return {}, {}, {}, {}
     try:
@@ -150,6 +213,26 @@ def read_ast_tree(path, code=None, prefixes=[], only_external_deps=False,
 
 def process_file(path, only_external_deps=False, skip_subs=False, prefixes=[],
                  pip_format=False, stderr=sys.stderr, verbose=False):
+    '''
+    Generate dependencies for given path to file
+
+    :param path: path to the file
+    :type path: str or pathlib.Path
+    :param only_external_deps: skip capsulated import statements
+    :type only_external_deps: Bool
+    :path skip_subs: skip dependecy attribute (skip B for "from A import B")
+    :type skip_subs: Bool
+    :param prefixes: list of prefixes by which the path will be trimmed
+    :type prefixes: list[str] or list[pathlib.Path]
+    :param pip_format: return dependencies in pip format
+    :type pip_format: Bool
+    :param stderr: error stream
+    :type stderr: io
+    :param verbose: turn on verbose flag
+    :type verbose: Bool
+    :return: tuple of dictionaries for absolute, relative, advanced (__import__ stmt) and skipped dependncies
+    :rtype: tuple({}, {}, {}, {})
+    '''
     if (code := get_text(path, verbose=verbose)):
         return read_ast_tree(path, code, prefixes=prefixes,
                              only_external_deps=only_external_deps,
@@ -163,16 +246,26 @@ def filter_requirements(file, deps, provides=[], only_top_module=[], ignore_list
     '''
     This function filter requirements through self-provides, different rules and etc
 
-    Arguments:
-    file - name of file, which contains dependencies
-    deps - list of dependencies
-    provides - list of provides (there can be self-provides)
-    only_top_module - for dependencies like a.b skip b
-    ignore_list - list of dependencies to be ignored
-    skip_flag - with this flag deps will be skipped
-    pip_format - change dependencies to pip_format (only names)
-    stderr - messages output
-    verbose - verbose flag
+    :param file: name of file, which contains dependencies
+    :type file: str
+    :param deps: list of dependencies
+    :type deps: {str:[]}
+    :param provides: list of provides (there can be self-provides)
+    :type provides: list[str]
+    :param only_top_module: for dependencies like a.b skip b
+    :type only_top_module: Bool
+    :param ignore_list: list of dependencies to be ignored
+    :type ignore_list: list[str]
+    :param skip_flag: with this flag deps will be skipped
+    :type skip_flag: Bool
+    :param pip_format: change dependencies to pip_format (only names)
+    :type pip_format: Bool
+    :param stderr: messages output
+    :type stderr: io
+    :param verbose: verbose flag
+    :type verbose: Bool
+    :return: list of filtered deps
+    :rtype: list[str]
     '''
     dependencies = []
     for dep, lines in deps.items():
@@ -200,6 +293,34 @@ def generate_requirements(files, add_prov_path=[], prefixes=sys.path,
                           ignore_list=sys.builtin_module_names, read_prov_from_file=None,
                           skip_subs=True, only_external_deps=False, only_top_module=False,
                           pip_format=False, stderr=sys.stderr, verbose=True):
+    '''
+    Generate dependencies for given file-list, filter them through detected provides and return in specified format.
+
+    :param files: list of files
+    :type files: list[str]
+    :param add_prov_path: list of additional pathes for provides searching
+    :type add_prov_path: list[str]
+    :param prefixes: list of prefixes by which the path will be trimmed
+    :type prefixes: list[str] or list[pathlib.Path]
+    :param ignore_list: list of dependencies to be ignored
+    :type ignore_list: list[str]
+    :param read_prov_from_file: path to file with additional provides
+    :type read_prov_from_file: str or pathlib.Path
+    :path skip_subs: skip dependecy attribute (skip B for "from A import B")
+    :type skip_subs: Bool
+    :param only_external_deps: skip capsulated import statements
+    :type only_external_deps: Bool
+    :param only_top_module: for dependencies like a.b skip b
+    :type only_top_module: Bool
+    :param pip_format: change dependencies to pip_format (only names)
+    :type pip_format: Bool
+    :param stderr: messages output
+    :type stderr: io
+    :param verbose: verbose flag
+    :type verbose: Bool
+    :return: tuple of dictionaries for absolute, relative, advanced (__import__ stmt) and skipped dependncies
+    :rtype: tuple({}, {}, {}, {})
+    '''
     full_provides = set()
     abs_provides = set()
     add_provides = set()
