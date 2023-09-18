@@ -16,6 +16,14 @@ abi3 = f'.abi3{shlib_suffix}'
 
 
 def processing_pth(path):
+    '''
+    Read new pathes from given file (it should be .pth) and returns new pathes
+
+    :param path: path to the .pth file
+    :type path: str or pathlib.Path
+    :return: new pathes
+    :rtype: list[str]
+    '''
     new_names = []
     try:
         with open(path, 'r') as f:
@@ -38,18 +46,20 @@ def create_provides_from_path(path, prefixes=sys.path, abs_mode=False,
     '''
     Creates provides from given path for 1 file.
 
-    Arguments:
-    path - path from which provides will be created
-    prefix - list of prefixes to be excluded from provides
-    pkg_mode - by default path ended by directory will be skipped
-    skip_wrong_names - if there is "-" in provide it will be skipped
-    Examples:
-    create_provides_from_path('/usr/lib64/python3/site-packages/ast.py', sys.path):
-    ['ast']
-    create_provides_from_path('/usr/lib64/python3/site-packages/ast.py', [], skip_wrong_names=False):
-    ['ast', 'site-packages.ast', ..., 'usr.lib64.python3.site-packages.ast']
-    create_provides_from_path('/usr/lib64/python3/site-packages/ast.py', []):
-    ['ast']
+    :param path: path from which provides will be created
+    :type path: str or pathlib.Path
+    :param prefixes: list of prefixes by which the path will be trimmed
+    :type prefixes: list[str]
+    :param abs_mode: create provide only for absolute import (['A.B'] instead of ['B', 'A.B'])
+    :type abs_mode: Bool
+    :param pkg_mode: create provide even for directory
+    :type pkg_mode: Bool
+    :param skip_wrong_names: skip provide if they are not an identifier
+    :type skip_wrong_names: Bool
+    :param skip_namespace_pkgs: do not build provides for namespace packages
+    :type skip_namespace_pkgs: Bool
+    :return: list of provides created from given path
+    :rtype: list[str]
     '''
 
     if isinstance(path, str):
@@ -112,12 +122,20 @@ def create_provides_from_path(path, prefixes=sys.path, abs_mode=False,
 def search_for_provides(path, prefixes=sys.path, abs_mode=False,
                         skip_wrong_names=True, skip_namespace_pkgs=True):
     '''
-    This function walks through given path, detect .pth and search for provides
+    This function walks through given path and search for provides
 
-    Arguments:
-    path - given path
-    prefixes - list of prefixes which will be used in "create_provides_from_path()"
-    abs_mode - flag that will be used in "create_provides_from_path()"
+    :param path: given path
+    :type path: str or pathlib.Path
+    :param prefixes: list of prefixes by which the path will be trimmed
+    :type prefixes: list[str]
+    :param abs_mode: create provide only for absolute import (['A.B'] instead of ['B', 'A.B'])
+    :type abs_mode: Bool
+    :param skip_wrong_names: skip provide if they are not an identifier
+    :type skip_wrong_names: Bool
+    :param skip_namespace_pkgs: do not build provides for namespace packages
+    :type skip_namespace_pkgs: Bool
+    :return: list of provides created from given path
+    :rtype: list[str]
     '''
     provides = []
     path = Path(path)
@@ -132,6 +150,20 @@ def search_for_provides(path, prefixes=sys.path, abs_mode=False,
 
 
 def module_detector(path, prefixes, modules=[], verbose_mode=True):
+    '''
+    Detect top module according to prefixes
+
+    :param path: path to the potentional module
+    :type path: str or pathlib.Path
+    :param prefixes: list of prefixes by which the path will be trimmed
+    :type prefixes: list[str]
+    :param modules: list of already detected modules (usefull with verbose_mode to ignore already detected modules)
+    :type modules: list[str]
+    :param verbose_mode: turn on verbose mode (print detected modules to the stderr)
+    :type verbose_mode: Bool
+    :return: pair of detected prefix and top module
+    :rtype: (str, str) or (None, None)
+    '''
     if isinstance(path, Path):
         path = path.as_posix()
     for pref in sorted(prefixes, key=lambda p: (len(p.split('/')), p), reverse=True):
@@ -144,6 +176,16 @@ def module_detector(path, prefixes, modules=[], verbose_mode=True):
 
 
 def pth_detector(pathes, verbose_mode=False):
+    '''
+    Check if given list of pathes contains working .pth files
+
+    :param pathes: list of pathes
+    :type pathes: list[str] or list[pathlib.Path]
+    :param verbose_mode: turn on verbose mode
+    :type verbose_mode: Bool
+    :return: list of new prefixes created by .pth files
+    :rtype: list[str]
+    '''
     new_prefixes = []
     for path in pathes:
         path = Path(path)
@@ -169,15 +211,20 @@ def pth_detector(pathes, verbose_mode=False):
 def files_filter(files, prefixes=sys.path, only_prefix=False,
                  deep_search=False, verbose_mode=True):
     '''
-    Sort files according to the prefix.
+    Sort files according to the list of prefixes, detect top modules/packages
 
-    Arguments:
-    files - list of files, where provides will be searched for
-    prefixes - list of prefixes
-    only_prefix - create provides only for files with prefix from prefixes
-    deep_search - with this option py3prov will try to find all provides according
-    to potential module (if it exists)
-    verbose_mode - turn on verbose mode
+    :param files: list of files, where provides will be searched for
+    :type files: list[str]
+    :param prefixes: list of prefixes
+    :type prefixes: list[str]
+    :only_prefix: create provides only for files with prefix from prefixes
+    :type only_prefix: Bool
+    :param deep_search: with this option py3prov will try to find all provides according
+    to potential module (if it exists). Not fully tested.
+    :param verbose_mode: turn on verbose mode
+    :type verbose_mode: Bool
+    :return: sorted dictionary {file:is_top_module_flag}
+    :rtype: {str:str} or {str:None}
     '''
 
     files_dict = {}
@@ -210,6 +257,29 @@ def files_filter(files, prefixes=sys.path, only_prefix=False,
 def generate_provides(files, prefixes=sys.path, skip_pth=False, only_prefix=False,
                       deep_search=False, abs_mode=False, verbose=True,
                       skip_wrong_names=True, skip_namespace_pkgs=True):
+    '''
+    Generate provides for given list of files, sorted through prefixes if required, detect top modules.
+
+    :param files: list of files
+    :type files: list[str]
+    :param prefixes: list of prefixes by which the path will be trimmed
+    :type prefixes: list[str]
+    :param skip_pth: ignore .pth files
+    :type skip_pth: Bool
+    :only_prefix: create provides only for files with prefix from prefixes
+    :type only_prefix: Bool
+    :param deep_search: with this option py3prov will try to find all provides according
+    to potential module (if it exists). Not fully tested.
+    :param abs_mode: create provide only for absolute import (['A.B'] instead of ['B', 'A.B'])
+    :type abs_mode: Bool
+    :param verbose: turn on verbose mode
+    :param skip_wrong_names: skip provide if they are not an identifier
+    :type skip_wrong_names: Bool
+    :param skip_namespace_pkgs: do not build provides for namespace packages
+    :type skip_namespace_pkgs: Bool
+    :return: dict {file:[provides]}
+    :rtype: {str:[str]}
+    '''
     provides = {}
     files_dict = files_filter(files.copy(), prefixes=prefixes, only_prefix=only_prefix,
                               deep_search=deep_search, verbose_mode=verbose)
@@ -231,7 +301,7 @@ def generate_provides(files, prefixes=sys.path, skip_pth=False, only_prefix=Fals
             if key in provides:
                 if abs_mode:
                     provides[key]['provides'] += [new for new in new_provs['provides']
-                                                 if new not in provides[key]['provides']]
+                                                  if new not in provides[key]['provides']]
                 if not provides[key]['package']:
                     provides[key]['package'] = new_provs['package']
             else:
