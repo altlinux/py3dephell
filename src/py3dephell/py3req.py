@@ -386,8 +386,8 @@ def generate_requirements(files, add_prov_path=[], prefixes=sys.path,
 def main():
     description = 'Search for requiremnts for pyfile'
     args = argparse.ArgumentParser(description=description)
-    args.add_argument('--add_prov_path', nargs='+', default=[],
-                      help='List of additional paths for provides')
+    args.add_argument('--add_prov_path', default="",
+                      help='List of additional paths for provides (separated by ":")')
     args.add_argument('--prefixes',
                       help='Prefixes that will be removed from full'
                            'qualified name for relative import (string separated by commas)')
@@ -417,7 +417,7 @@ def main():
 
     prefixes = args.prefixes.split(',') if args.prefixes else sys.path
 
-    dependencies = generate_requirements(files=args.input, add_prov_path=args.add_prov_path,
+    dependencies = generate_requirements(files=args.input, add_prov_path=args.add_prov_path.split(":"),
                                          ignore_list=args.ignore_list,
                                          read_prov_from_file=args.read_prov_from_file,
                                          skip_subs=True, prefixes=prefixes,
