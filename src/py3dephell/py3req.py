@@ -410,6 +410,11 @@ def main():
 
     if not args.input:
         args.input = shlex.split(sys.stdin.read())
+
+    dirs = filter(lambda p: pathlib.Path(p).is_dir(), args.input)
+    args.input += sum(map(lambda d: list(pathlib.Path(d).rglob("*")), dirs), start=[])
+    args.input = list(map(lambda p: pathlib.Path(p).absolute().as_posix(), args.input))
+
     prefixes = args.prefixes.split(',') if args.prefixes else sys.path
 
     dependencies = generate_requirements(files=args.input, add_prov_path=args.add_prov_path,
