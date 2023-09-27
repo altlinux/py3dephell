@@ -2,10 +2,10 @@
 This project presents tools to work with dependencies and provides of python3 projects.
 
 ## py3req
-This module detects dependencies of python3 packages. It has verbosive **--help** option, but here is simple example how to use it:
+This module detects dependencies of python3 packages. It has verbose **--help** option, but here is simple example how to use it:
 
 ## py3prov
-This module generate provides for python3 packages. As for **py3req** its **--help** is verbosive enough
+This module generate provides for python3 packages. As for **py3req** its **--help** is verbose enough
 
 ## How to
 Imagine you have simple project like this one:
@@ -26,7 +26,7 @@ unittest
 re
 re
 ```
-Feel free to make it more verbosive:
+Feel free to make it more verbose:
 ```
 % python3 -m py3dephell.py3req --pip_format --verbose src
 py3prov: detected potential module:src
@@ -34,7 +34,7 @@ py3prov: detected potential module:src
 /tmp/.private/kotopesutility/src/pkg1/mod1.py:requests os
 /tmp/.private/kotopesutility/src/pkg1/subpkg/mod3.py:re
 ```
-As you can see, there are some modules from standart library, so let py3req to learn it:
+As you can see, there are some modules from standard library, so let py3req to learn it:
 ```
 % python3 -m py3dephell.py3req --pip_format --add_prov_path /usr/lib64/python3.11 src
 requests
@@ -53,7 +53,7 @@ subpkg.mod3
 pkg1.subpkg.mod3
 src.pkg1.subpkg.mod3
 ```
-Yeah, let's make it more verbosive!
+Yeah, let's enhance the verbosity level!
 ```
 % python3 -m py3dephell.py3prov --verbose src/pkg1 src/tests
 src/tests:['test1', 'tests.test1', 'src.tests.test1']
