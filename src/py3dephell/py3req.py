@@ -8,6 +8,7 @@ import ast
 import shlex
 import argparse
 import pathlib
+import sysconfig
 from .py3prov import generate_provides, search_for_provides
 
 
@@ -59,6 +60,32 @@ def build_full_qualified_name(path, level, dependency=None, prefixes=[]):
     if dependency:
         return f'{parent}.{dependency}' if parent else f'{dependency}'
     return parent
+
+
+def _list_pkgs(path, level):
+    path = pathlib.Path(path)
+    pathes = [path.absolute().as_posix()]
+    if level > 0:
+        if path.is_dir():
+            pathes.append(path.absolute().as_posix())
+            for p in path.iterdir():
+                pathes += _list_pkgs(p, level - 1)
+    return pathes
+
+
+def _form_std_provides():
+    std_lib = set([sysconfig.get_paths()['stdlib'], sysconfig.get_paths()['platstdlib']])
+
+    # It's possible that on OSes like Debian, std_lib may contain site(dist)-packages
+    site_pkgs = set([sysconfig.get_paths()['purelib'], sysconfig.get_paths()['platlib']])
+    to_exclude = sum(map(lambda path: [(pref, len(path.split('/')) - len(pref.split('/')))
+                                       for pref in std_lib if path.startswith(pref)], site_pkgs), start=[])
+    to_exclude = {pref: length for pref, length in sorted(to_exclude, key=lambda k: k[1])}
+    pathes = list(std_lib)
+    pathes += sum([_list_pkgs(path, level) for path, level in to_exclude.items()], start=[])
+    pathes = list(filter(lambda p: p not in site_pkgs | set(to_exclude.keys()), pathes))
+
+    return pathes
 
 
 def get_text(path, size=-1, verbose=False):
@@ -292,7 +319,7 @@ def filter_requirements(file, deps, provides=[], only_top_module=[], ignore_list
 def generate_requirements(files, add_prov_path=[], prefixes=sys.path,
                           ignore_list=sys.builtin_module_names, read_prov_from_file=None,
                           skip_subs=True, only_external_deps=False, only_top_module=False,
-                          pip_format=False, stderr=sys.stderr, verbose=True):
+                          pip_format=False, exclude_stdlib=False, stderr=sys.stderr, verbose=True):
     '''
     Generate dependencies for given file-list, filter them through detected provides and return in specified format.
 
@@ -314,6 +341,8 @@ def generate_requirements(files, add_prov_path=[], prefixes=sys.path,
     :type only_top_module: Bool
     :param pip_format: change dependencies to pip_format (only names)
     :type pip_format: Bool
+    :param exclude_stdlib: exclude from dependencies standard lib provides
+    :type exclude_stdlib: Bool
     :param stderr: messages output
     :type stderr: io
     :param verbose: verbose flag
@@ -348,6 +377,11 @@ def generate_requirements(files, add_prov_path=[], prefixes=sys.path,
     for path in filter(lambda p: p, add_prov_path):
         prov = search_for_provides(path, abs_mode=False, skip_wrong_names=False, skip_namespace_pkgs=False)
         add_provides |= set(prov)
+
+    if exclude_stdlib:
+        add_provides |= set(sum([search_for_provides(p, abs_mode=False,
+                                                     skip_wrong_names=False, skip_namespace_pkgs=False)
+                                 for p in _form_std_provides()], start=[]))
 
     for file in files:
         if file.endswith('.so'):
@@ -402,6 +436,8 @@ def main():
                       help='For dependency like a.b skip b')
     args.add_argument('--pip_format', action='store_true',
                       help='Print dependencies in pip format')
+    args.add_argument('--exclude_stdlib', action='store_true',
+                      help='Exclude dependencies that are provided by installed python3 standart library')
     args.add_argument('--verbose', action='store_true',
                       help='Verbose stderr')
     args.add_argument('input', nargs='*',
@@ -423,7 +459,8 @@ def main():
                                          skip_subs=True, prefixes=prefixes,
                                          only_external_deps=args.only_external_deps,
                                          only_top_module=args.only_top_module,
-                                         pip_format=args.pip_format, verbose=args.verbose)
+                                         pip_format=args.pip_format, exclude_stdlib=args.exclude_stdlib,
+                                         verbose=args.verbose)
 
     for file, deps in dependencies.items():
         if any(deps) and args.verbose:
