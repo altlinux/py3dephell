@@ -345,7 +345,7 @@ def generate_requirements(files, add_prov_path=[], prefixes=sys.path,
             modules[module] = prov['package']
         abs_provides |= set(prov['provides'])
 
-    for path in add_prov_path:
+    for path in filter(lambda p: p, add_prov_path):
         prov = search_for_provides(path, abs_mode=False, skip_wrong_names=False, skip_namespace_pkgs=False)
         add_provides |= set(prov)
 
