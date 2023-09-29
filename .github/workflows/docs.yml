@@ -1,0 +1,37 @@
+name: py3dephell
+
+on:
+  push:
+    branches:
+      - kotopes-develop
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - run: pip install pdoc
+      - run: pdoc --no-show-source -o docs src/py3dephell
+
+      - uses: actions/upload-pages-artifact@v2
+        with:
+          path: docs/
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v2
