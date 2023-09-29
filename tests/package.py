@@ -37,11 +37,12 @@ def generate_somodule(path, name, byte_code=b'\x7fELF\x02'):
     return [p]
 
 
-def generate_pymodule(path, name):
-    text = f'try:\n\tfrom . import {name}_lib\n'
-    text += 'except:\n\timport os\n'
-    text += 'importlib = __import__("importlib")\n'
-    text += 'importlib.import_module("ast")\n'
+def generate_pymodule(path, name, text=None):
+    if text is None:
+        text = f'try:\n\tfrom . import {name}_lib\n'
+        text += 'except:\n\timport os\n'
+        text += 'importlib = __import__("importlib")\n'
+        text += 'importlib.import_module("ast")\n'
 
     p = pathlib.Path(path).joinpath(f'{name}.py')
     p.write_text(text)
