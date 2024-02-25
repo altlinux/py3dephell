@@ -29,11 +29,11 @@ class TestPy3Prov(unittest.TestCase):
         test_cases[2] = [{**test_cases[1][0], 'abs_mode': True}, []]
 
         # Top-module with empty prefixes with allowed wrong names ("-" and "." in names)
-        test_cases[3] = [{**test_cases[1][0], 'skip_wrong_names':False},
+        test_cases[3] = [{**test_cases[1][0], 'skip_wrong_names': False},
                          ['module', 'bad-symbol.module', 'sys_path.bad-symbol.module']]
 
         # Top-module with empty prefixes with allowed wrong names ("-" and "." in names) in absolute mode
-        test_cases[4] = [{**test_cases[3][0], 'abs_mode':True}, ['sys_path.bad-symbol.module']]
+        test_cases[4] = [{**test_cases[3][0], 'abs_mode': True}, ['sys_path.bad-symbol.module']]
         for subtest_num, inp_out in test_cases.items():
             with self.subTest(f"Testing create_provides_from_path for module subTest:{subtest_num}"):
                 self.assertEqual(py3prov.create_provides_from_path(**inp_out[0]), inp_out[1],
@@ -127,10 +127,10 @@ class TestPy3Prov(unittest.TestCase):
         prepare_package(self.tests_packages, 'pkg_for_searching', w_pth=True, level=1)
         test_cases = {}
         test_cases[0] = [{'path': self.tests_packages.joinpath('pkg_for_searching.pth')}, []]
-        test_cases[1] = [{**test_cases[0][0], 'prefixes':[self.tests_packages.as_posix()]},
+        test_cases[1] = [{**test_cases[0][0], 'prefixes': [self.tests_packages.as_posix()]},
                          []]
         test_cases[2] = [{'path': self.tests_packages.joinpath('pkg_for_searching'),
-                          'prefixes': [self.tests_packages.as_posix()], 'abs_mode':True},
+                          'prefixes': [self.tests_packages.as_posix()], 'abs_mode': True},
                          ['pkg_for_searching', 'pkg_for_searching.mod_0',  'pkg_for_searching.mod_0_lib',
                           'pkg_for_searching.__init__']]
         test_cases[3] = [{**test_cases[2][0], 'abs_mode': False},
@@ -172,7 +172,7 @@ class TestPy3Prov(unittest.TestCase):
                     'package': None}
         test_cases[1] = [{**test_cases[0][0], 'abs_mode': True},
                          {self.tests_packages.joinpath('pkg_for_generate_provides/__init__.py').as_posix(): provides}]
-        test_cases[2] = [{'files': [self.tests_packages.joinpath('pkg_for_generate_provides')], 'only_prefix':True,
+        test_cases[2] = [{'files': [self.tests_packages.joinpath('pkg_for_generate_provides')], 'only_prefix': True,
                           'prefixes': []},
                          {}]
         provides = {'provides': ['__init__', 'pkg_for_generate_provides.__init__', 'pkg_for_generate_provides'],
@@ -190,11 +190,9 @@ class TestPy3Prov(unittest.TestCase):
 
         for subtest_num, inp_out in test_cases.items():
             with self.subTest(f"Testing generate_provides subTest:{subtest_num}"):
-                jopa = py3prov.generate_provides(**inp_out[0])
-                print(f'>>>{subtest_num}<<<>>>{jopa}<<<>>>{inp_out[1]}', file=sys.stderr)
-                self.assertDictEqual(jopa, inp_out[1],
+                self.assertDictEqual(py3prov.generate_provides(**inp_out[0]), inp_out[1],
                                      msg=f'SubTest:{subtest_num} FAILED')
-        #rmtree(self.tmp)
+        rmtree(self.tmp)
 
 
 if __name__ == '__main__':
