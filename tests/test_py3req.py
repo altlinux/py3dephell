@@ -95,20 +95,17 @@ class TestPy3Req(unittest.TestCase):
 
     def test_filter_requirements(self):
         rmtree(self.tmp)
-        pref = f'python{sys.version_info[0]}'
 
         test_cases = {}
         test_cases[0] = [{'file': None, 'deps': {'os.path': [1], 'sys': [2], 'ast': [3],
                                                  'friend': [4]}, 'skip_flag': True}, []]
         test_cases[1] = [{**test_cases[0][0], 'skip_flag': False},
-                         [f'{pref}({mod})' for mod in ['os.path', 'sys', 'ast', 'friend']]]
-        test_cases[2] = [{**test_cases[1][0], 'pip_format': True},
-                         ['os.path', 'sys', 'ast', 'friend']]
-        test_cases[3] = [{**test_cases[2][0], 'ignore_list': ['sys']},
+                         [f'{mod}' for mod in ['os.path', 'sys', 'ast', 'friend']]]
+        test_cases[2] = [{**test_cases[1][0], 'ignore_list': ['sys']},
                          ['os.path', 'ast', 'friend']]
-        test_cases[4] = [{**test_cases[3][0], 'provides': ['friend']},
+        test_cases[3] = [{**test_cases[2][0], 'provides': ['friend']},
                          ['os.path', 'ast']]
-        test_cases[5] = [{**test_cases[4][0], 'only_top_module': True},
+        test_cases[4] = [{**test_cases[3][0], 'only_top_module': True},
                          ['os', 'ast']]
 
         for subtest_num, inp_out in test_cases.items():
@@ -118,7 +115,6 @@ class TestPy3Req(unittest.TestCase):
                                          msg=f'SubTest:{subtest_num} FAILED')
 
     def test_generate_requirements(self):
-        pref = f'python{sys.version_info[0]}'
         dep_version = os.getenv('RPM_PYTHON3_VERSION', '%s.%s' % sys.version_info[0:2])
         so_dep = f'python{dep_version}-ABI(64bit)'
 
@@ -128,11 +124,9 @@ class TestPy3Req(unittest.TestCase):
 
         test_cases = {}
         test_cases[0] = [{'files': files},
-                         list(map(lambda dep: f"{pref}({dep})", ['os', 'requests', 'unmet', 'importlib'])) + [so_dep]]
-        test_cases[1] = [{**test_cases[0][0], 'pip_format': True}, ['os', 'requests', 'unmet', 'importlib'] + [so_dep]]
-        test_cases[2] = [{**test_cases[0][0], 'exclude_stdlib': True},
-                         list(map(lambda dep: f"{pref}({dep})", ['requests', 'unmet'])) + [so_dep]]
-        test_cases[3] = [{**test_cases[2][0], 'pip_format': True}, ['requests', 'unmet'] + [so_dep]]
+                         list(map(lambda dep: f"{dep}", ['os', 'requests', 'unmet', 'importlib'])) + [so_dep]]
+        test_cases[1] = [{**test_cases[0][0], 'exclude_stdlib': True},
+                         list(map(lambda dep: f"{dep}", ['requests', 'unmet'])) + [so_dep]]
 
         for subtest_num, inp_out in test_cases.items():
             with self.subTest(msg=f'Testing py3req.filter_requirements subTest:{subtest_num}'):

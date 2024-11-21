@@ -12,6 +12,13 @@ import sysconfig
 from .py3prov import generate_provides, search_for_provides
 
 
+def _remove_reduntant_args(func):
+    def remover(*args, **kwargs):
+        return func(**dict(filter(lambda arg: arg[0] in func.__code__.co_varnames,
+                           kwargs.items())))
+    return remover
+
+
 def is_import_stmt(node):
     '''
     Checks if statement is builtin import method - __init__()
@@ -239,7 +246,7 @@ def read_ast_tree(path, code=None, prefixes=[], only_external_deps=False,
 
 
 def process_file(path, only_external_deps=False, skip_subs=False, prefixes=[],
-                 pip_format=False, stderr=sys.stderr, verbose=False):
+                 stderr=sys.stderr, verbose=False):
     '''
     Generate dependencies for given path to file
 
@@ -251,8 +258,6 @@ def process_file(path, only_external_deps=False, skip_subs=False, prefixes=[],
     :type skip_subs: Bool
     :param prefixes: list of prefixes by which the path will be trimmed
     :type prefixes: list[str] or list[pathlib.Path]
-    :param pip_format: return dependencies in pip format
-    :type pip_format: Bool
     :param stderr: error stream
     :type stderr: io
     :param verbose: turn on verbose flag
@@ -268,7 +273,7 @@ def process_file(path, only_external_deps=False, skip_subs=False, prefixes=[],
 
 
 def filter_requirements(file, deps, provides=[], only_top_module=[], ignore_list=[],
-                        skip_flag=False, pip_format=False, stderr=sys.stderr,
+                        skip_flag=False, stderr=sys.stderr,
                         verbose=False):
     '''
     This function filter requirements through self-provides, different rules and etc
@@ -285,8 +290,6 @@ def filter_requirements(file, deps, provides=[], only_top_module=[], ignore_list
     :type ignore_list: list[str]
     :param skip_flag: with this flag deps will be skipped
     :type skip_flag: Bool
-    :param pip_format: change dependencies to pip_format (only names)
-    :type pip_format: Bool
     :param stderr: messages output
     :type stderr: io
     :param verbose: verbose flag
@@ -309,17 +312,15 @@ def filter_requirements(file, deps, provides=[], only_top_module=[], ignore_list
         else:
             if only_top_module:
                 dep = dep.split('.')[0]
-            if pip_format:
-                dependencies.append(dep)
-            else:
-                dependencies.append(f'python{sys.version_info[0]}({dep})')
+            dependencies.append(dep)
     return dependencies
 
 
+@_remove_reduntant_args
 def generate_requirements(files, add_prov_path=[], prefixes=sys.path,
                           ignore_list=sys.builtin_module_names, read_prov_from_file=None,
                           skip_subs=True, only_external_deps=False, only_top_module=False,
-                          pip_format=False, exclude_stdlib=False, stderr=sys.stderr, verbose=True):
+                          exclude_stdlib=False, stderr=sys.stderr, verbose=True):
     '''
     Generate dependencies for given file-list, filter them through detected provides and return in specified format.
 
@@ -339,8 +340,6 @@ def generate_requirements(files, add_prov_path=[], prefixes=sys.path,
     :type only_external_deps: Bool
     :param only_top_module: for dependencies like a.b skip b
     :type only_top_module: Bool
-    :param pip_format: change dependencies to pip_format (only names)
-    :type pip_format: Bool
     :param exclude_stdlib: exclude from dependencies standard lib provides
     :type exclude_stdlib: Bool
     :param stderr: messages output
@@ -391,24 +390,24 @@ def generate_requirements(files, add_prov_path=[], prefixes=sys.path,
 
         abs_deps, rel_deps, adv_deps, skip =\
             process_file(file, prefixes=prefixes, only_external_deps=only_external_deps,
-                         skip_subs=skip_subs, pip_format=pip_format, stderr=stderr, verbose=verbose)
+                         skip_subs=skip_subs, stderr=stderr, verbose=verbose)
 
         if file in modules.keys() and '-' not in modules[file]:
             abs_deps = filter_requirements(file, abs_deps, abs_provides | add_provides,
-                                           only_top_module, ignore_list, pip_format=pip_format,
+                                           only_top_module, ignore_list,
                                            stderr=stderr, verbose=verbose)
         else:
             abs_deps = filter_requirements(file, abs_deps, full_provides | add_provides,
-                                           only_top_module, ignore_list, pip_format=pip_format,
+                                           only_top_module, ignore_list,
                                            stderr=stderr, verbose=verbose)
 
         rel_deps = filter_requirements(file, rel_deps, full_provides | add_provides,
                                        only_top_module=False, ignore_list=ignore_list,
-                                       pip_format=pip_format, stderr=stderr, verbose=verbose)
+                                       stderr=stderr, verbose=verbose)
 
         adv_deps = filter_requirements(file, adv_deps, full_provides | add_provides,
                                        only_top_module=False, ignore_list=ignore_list,
-                                       pip_format=pip_format, stderr=stderr, verbose=verbose)
+                                       stderr=stderr, verbose=verbose)
 
         filter_requirements(file, skip, skip_flag=True, stderr=stderr, verbose=verbose)
 
@@ -434,8 +433,6 @@ def main():
                       help='Skip dependencies, that are used inside conditions')
     args.add_argument('--only_top_module', action='store_true',
                       help='For dependency like a.b skip b')
-    args.add_argument('--pip_format', action='store_true',
-                      help='Print dependencies in pip format')
     args.add_argument('--exclude_stdlib', action='store_true',
                       help='Exclude dependencies that are provided by installed python3 standart library')
     args.add_argument('--verbose', action='store_true',
@@ -459,7 +456,7 @@ def main():
                                          skip_subs=True, prefixes=prefixes,
                                          only_external_deps=args.only_external_deps,
                                          only_top_module=args.only_top_module,
-                                         pip_format=args.pip_format, exclude_stdlib=args.exclude_stdlib,
+                                         exclude_stdlib=args.exclude_stdlib,
                                          verbose=args.verbose)
 
     for file, deps in dependencies.items():
