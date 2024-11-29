@@ -118,13 +118,15 @@ class TestPy3Req(unittest.TestCase):
         dep_version = os.getenv('RPM_PYTHON3_VERSION', '%s.%s' % sys.version_info[0:2])
         so_dep = f'python{dep_version}-ABI(64bit)'
 
-        module_1 = generate_pymodule(self.tmp, "module_1", text="from . import module_2\nimport os\nimport requests")
+        module_1 = generate_pymodule(self.tmp, "module_1",
+                                     text="from . import module_2\nimport os\nimport requests\nimport os.path")
         module_2 = generate_pymodule(self.tmp, "module_2", text="import sys\n__import__('unmet')\nimport importlib")
         files = list(map(lambda x: x.absolute().as_posix(), module_1 + module_2))
 
         test_cases = {}
         test_cases[0] = [{'files': files},
-                         list(map(lambda dep: f"{dep}", ['os', 'requests', 'unmet', 'importlib'])) + [so_dep]]
+                         list(map(lambda dep: f"{dep}",
+                                  ['os', 'requests', 'unmet', 'importlib', 'os.path'])) + [so_dep]]
         test_cases[1] = [{**test_cases[0][0], 'exclude_stdlib': True},
                          list(map(lambda dep: f"{dep}", ['requests', 'unmet'])) + [so_dep]]
 

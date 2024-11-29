@@ -381,6 +381,8 @@ def generate_requirements(files, add_prov_path=[], prefixes=sys.path,
         add_provides |= set(sum([search_for_provides(p, abs_mode=False,
                                                      skip_wrong_names=False, skip_namespace_pkgs=False)
                                  for p in _form_std_provides()], start=[]))
+        # This module is provided by different real modules which are platform specific, such as posixpath.py
+        add_provides.add("os.path")
 
     for file in files:
         if file.endswith('.so'):
