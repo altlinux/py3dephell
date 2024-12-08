@@ -5,6 +5,7 @@ import pathlib
 import tempfile
 import unittest
 from shutil import rmtree
+from functools import reduce
 from package import generate_somodule, generate_pymodule
 from py3dephell import py3req
 
@@ -98,21 +99,21 @@ class TestPy3Req(unittest.TestCase):
 
         test_cases = {}
         test_cases[0] = [{'file': None, 'deps': {'os.path': [1], 'sys': [2], 'ast': [3],
-                                                 'friend': [4]}, 'skip_flag': True}, []]
+                                                 'friend': [4]}, 'skip_flag': True}, set()]
         test_cases[1] = [{**test_cases[0][0], 'skip_flag': False},
-                         [f'{mod}' for mod in ['os.path', 'sys', 'ast', 'friend']]]
+                         set(['os.path', 'sys', 'ast', 'friend'])]
         test_cases[2] = [{**test_cases[1][0], 'ignore_list': ['sys']},
-                         ['os.path', 'ast', 'friend']]
+                         set(['os.path', 'ast', 'friend'])]
         test_cases[3] = [{**test_cases[2][0], 'provides': ['friend']},
-                         ['os.path', 'ast']]
+                         set(['os.path', 'ast'])]
         test_cases[4] = [{**test_cases[3][0], 'only_top_module': True},
-                         ['os', 'ast']]
+                         set(['os', 'ast'])]
 
         for subtest_num, inp_out in test_cases.items():
             with self.subTest(msg=f'Testing py3req.filter_requirements subTest:{subtest_num}'):
                 with open('/dev/null', 'w') as stderr:
-                    self.assertListEqual(py3req.filter_requirements(**inp_out[0], stderr=stderr), inp_out[1],
-                                         msg=f'SubTest:{subtest_num} FAILED')
+                    self.assertSetEqual(py3req.filter_requirements(**inp_out[0], stderr=stderr), inp_out[1],
+                                        msg=f'SubTest:{subtest_num} FAILED')
 
     def test_generate_requirements(self):
         dep_version = os.getenv('RPM_PYTHON3_VERSION', '%s.%s' % sys.version_info[0:2])
@@ -133,8 +134,9 @@ class TestPy3Req(unittest.TestCase):
         for subtest_num, inp_out in test_cases.items():
             with self.subTest(msg=f'Testing py3req.filter_requirements subTest:{subtest_num}'):
                 with open('/dev/null', 'w') as stderr:
-                    got = sum(sum(py3req.generate_requirements(**inp_out[0], stderr=stderr).values(),
-                                  start=()), start=[])
+                    got = reduce(lambda d1, d2: d1 | d2, reduce(lambda d1, d2: d1 + d2,
+                                                                (py3req.generate_requirements(**inp_out[0],
+                                                                                              stderr=stderr).values())))
                     self.assertSetEqual(set(got), set(inp_out[1]),
                                         msg=f'SubTest:{subtest_num} FAILED')
         rmtree(self.tmp)

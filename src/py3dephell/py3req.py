@@ -295,9 +295,9 @@ def filter_requirements(file, deps, provides=[], only_top_module=[], ignore_list
     :param verbose: verbose flag
     :type verbose: Bool
     :return: list of filtered deps
-    :rtype: list[str]
+    :rtype: set[str]
     '''
-    dependencies = []
+    dependencies = set()
     for dep, lines in deps.items():
         if dep in ignore_list:
             if verbose:
@@ -312,7 +312,7 @@ def filter_requirements(file, deps, provides=[], only_top_module=[], ignore_list
         else:
             if only_top_module:
                 dep = dep.split('.')[0]
-            dependencies.append(dep)
+            dependencies.add(dep)
     return dependencies
 
 
@@ -387,7 +387,7 @@ def generate_requirements(files, add_prov_path=[], prefixes=sys.path,
     for file in files:
         if file.endswith('.so'):
             if (dep := catch_so(file, stderr)):
-                dependencies[file] = [], [], [], [dep]
+                dependencies[file] = set(), set(), set(), set([dep])
                 continue
 
         abs_deps, rel_deps, adv_deps, skip =\
@@ -413,7 +413,7 @@ def generate_requirements(files, add_prov_path=[], prefixes=sys.path,
 
         filter_requirements(file, skip, skip_flag=True, stderr=stderr, verbose=verbose)
 
-        dependencies[file] = abs_deps, rel_deps, adv_deps, []
+        dependencies[file] = abs_deps, rel_deps, adv_deps, set()
 
     return dependencies
 
