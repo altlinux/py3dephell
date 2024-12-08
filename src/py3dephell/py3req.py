@@ -423,9 +423,9 @@ def main():
                       help='List of additional paths for provides (separated by ":")')
     args.add_argument('--prefixes',
                       help='Prefixes that will be removed from full'
-                           'qualified name for relative import (string separated by commas)')
-    args.add_argument('--ignore_list', nargs='+', default=sys.builtin_module_names,
-                      help='List of dependencies that should be ignored')
+                      'qualified name for relative import (string separated by ":")')
+    args.add_argument('--ignore_list', default=":".join(sys.builtin_module_names),
+                      help='List of dependencies that should be ignored (separated by ":")')
     args.add_argument('--read_prov_from_file',
                       default=None,
                       help='Read provides from file')
@@ -448,10 +448,12 @@ def main():
     args.input += sum(map(lambda d: list(pathlib.Path(d).rglob("*")), dirs), start=[])
     args.input = list(map(lambda p: pathlib.Path(p).absolute().as_posix(), args.input))
 
-    prefixes = args.prefixes.split(',') if args.prefixes else sys.path
+    prefixes = args.prefixes.split(':') if args.prefixes else sys.path
+
+    ignore_list = args.ignore_list.split(":")
 
     dependencies = generate_requirements(files=args.input, add_prov_path=args.add_prov_path.split(":"),
-                                         ignore_list=args.ignore_list,
+                                         ignore_list=ignore_list,
                                          read_prov_from_file=args.read_prov_from_file,
                                          skip_subs=True, prefixes=prefixes,
                                          only_external_deps=args.only_external_deps,
