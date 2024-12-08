@@ -121,8 +121,6 @@ def get_text(path, size=-1, verbose=False):
             print(f'Permission denied:{path}', file=sys.stderr)
         return None
     except IsADirectoryError:
-        if verbose:
-            print(f'Cannot work with dir:{path}', file=sys.stderr)
         return None
 
 
