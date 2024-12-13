@@ -431,7 +431,7 @@ def main():
     args.add_argument('--read_prov_from_file',
                       default=None,
                       help='Read provides from file')
-    args.add_argument('--only_external_deps', action='store_true',
+    args.add_argument('--exclude_hidden_deps', action='store_true',
                       help='Skip dependencies, that are used inside conditions')
     args.add_argument('--only_top_module', action='store_true',
                       help='For dependency like a.b skip b')
@@ -461,7 +461,7 @@ def main():
                                          ignore_list=ignore_list,
                                          read_prov_from_file=args.read_prov_from_file,
                                          skip_subs=True, prefixes=prefixes,
-                                         only_external_deps=args.only_external_deps,
+                                         only_external_deps=args.exclude_hidden_deps,
                                          only_top_module=args.only_top_module,
                                          exclude_stdlib=not args.include_stdlib,
                                          verbose=args.verbose)
