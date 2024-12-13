@@ -424,8 +424,10 @@ def main():
     args.add_argument('--prefixes',
                       help='Prefixes that will be removed from full'
                       'qualified name for relative import (string separated by ":")')
-    args.add_argument('--ignore_list', default=":".join(sys.builtin_module_names),
+    args.add_argument('--ignore_list', default="",
                       help='List of dependencies that should be ignored (separated by ":")')
+    args.add_argument('--include_built-in', action="store_true",
+                      help='Include built-in modules (like sys, time) to the dependencies list')
     args.add_argument('--read_prov_from_file',
                       default=None,
                       help='Read provides from file')
@@ -451,6 +453,9 @@ def main():
     prefixes = args.prefixes.split(':') if args.prefixes else sys.path
 
     ignore_list = args.ignore_list.split(":")
+
+    if not args.include_built_in:
+        ignore_list += sys.builtin_module_names
 
     dependencies = generate_requirements(files=args.input, add_prov_path=args.add_prov_path.split(":"),
                                          ignore_list=ignore_list,
