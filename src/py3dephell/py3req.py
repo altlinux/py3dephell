@@ -372,12 +372,13 @@ def generate_requirements(files, add_prov_path=[], prefixes=sys.path,
         abs_provides |= set(prov['provides'])
 
     for path in filter(lambda p: p, add_prov_path):
-        prov = search_for_provides(path, abs_mode=False, skip_wrong_names=False, skip_namespace_pkgs=False)
+        prov = search_for_provides(path, abs_mode=False, skip_wrong_names=False, skip_namespace_pkgs=False,
+                                   verbose=verbose)
         add_provides |= set(prov)
 
     if exclude_stdlib:
         add_provides |= set(sum([search_for_provides(p, abs_mode=False,
-                                                     skip_wrong_names=False, skip_namespace_pkgs=False)
+                                                     skip_wrong_names=False, skip_namespace_pkgs=False, verbose=verbose)
                                  for p in _form_std_provides()], start=[]))
         # This module is provided by different real modules which are platform specific, such as posixpath.py
         add_provides.add("os.path")
