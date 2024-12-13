@@ -435,7 +435,7 @@ def main():
                       help='Skip dependencies, that are used inside conditions')
     args.add_argument('--only_top_module', action='store_true',
                       help='For dependency like a.b skip b')
-    args.add_argument('--exclude_stdlib', action='store_true',
+    args.add_argument('--include_stdlib', action='store_true',
                       help='Exclude dependencies that are provided by installed python3 standart library')
     args.add_argument('--verbose', action='store_true',
                       help='Verbose stderr')
@@ -463,7 +463,7 @@ def main():
                                          skip_subs=True, prefixes=prefixes,
                                          only_external_deps=args.only_external_deps,
                                          only_top_module=args.only_top_module,
-                                         exclude_stdlib=args.exclude_stdlib,
+                                         exclude_stdlib=not args.include_stdlib,
                                          verbose=args.verbose)
 
     for file, deps in dependencies.items():
