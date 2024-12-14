@@ -42,7 +42,8 @@ def processing_pth(path):
 
 
 def create_provides_from_path(path, prefixes=sys.path, abs_mode=False,
-                              pkg_mode=False, skip_wrong_names=True, skip_namespace_pkgs=True):
+                              pkg_mode=False, skip_wrong_names=True, skip_namespace_pkgs=True, verbose=False,
+                              _bad_provides=set()):
     '''
     Creates provides from given path for 1 file.
 
@@ -58,6 +59,8 @@ def create_provides_from_path(path, prefixes=sys.path, abs_mode=False,
     :type skip_wrong_names: Bool
     :param skip_namespace_pkgs: do not build provides for namespace packages
     :type skip_namespace_pkgs: Bool
+    :param verbose: turn on verbose mode
+    :type verbose: Bool
     :return: list of provides created from given path
     :rtype: list[str]
     '''
@@ -97,7 +100,9 @@ def create_provides_from_path(path, prefixes=sys.path, abs_mode=False,
             top_package_flag = True
 
         if '.' in parts[-1]:
-            print(f'py3prov: bad name for provides from path:{path.as_posix()}', file=sys.stderr)
+            if parts[-1] not in _bad_provides and verbose:
+                print(f'py3prov: bad name for provides from path:{path.as_posix()}', file=sys.stderr)
+                _bad_provides.add(parts[-1])
 
         if abs_mode and (all([part.isidentifier() for part in parts]) or not skip_wrong_names):
             provides.append('.'.join(parts))
@@ -114,13 +119,15 @@ def create_provides_from_path(path, prefixes=sys.path, abs_mode=False,
 
     if (top_package_flag or not skip_namespace_pkgs) and parent.as_posix() != '.':
         provides += create_provides_from_path(parent, prefixes,
-                                              pkg_mode=True, abs_mode=abs_mode, skip_wrong_names=skip_wrong_names)
+                                              pkg_mode=True, abs_mode=abs_mode, skip_wrong_names=skip_wrong_names,
+                                              verbose=verbose, _bad_provides=_bad_provides)
 
     return provides
 
 
 def search_for_provides(path, prefixes=sys.path, abs_mode=False,
-                        skip_wrong_names=True, skip_namespace_pkgs=True):
+                        skip_wrong_names=True, skip_namespace_pkgs=True, verbose=False,
+                        _bad_provides=set()):
     '''
     This function walks through given path and search for provides
 
@@ -134,6 +141,8 @@ def search_for_provides(path, prefixes=sys.path, abs_mode=False,
     :type skip_wrong_names: Bool
     :param skip_namespace_pkgs: do not build provides for namespace packages
     :type skip_namespace_pkgs: Bool
+    :param verbose: turn on verbose mode
+    :type verbose: Bool
     :return: list of provides created from given path
     :rtype: list[str]
     '''
@@ -142,10 +151,12 @@ def search_for_provides(path, prefixes=sys.path, abs_mode=False,
 
     if path.is_file() or path.is_symlink():
         return create_provides_from_path(path.as_posix(), prefixes, abs_mode=abs_mode,
-                                         skip_wrong_names=skip_wrong_names, skip_namespace_pkgs=skip_namespace_pkgs)
+                                         skip_wrong_names=skip_wrong_names, skip_namespace_pkgs=skip_namespace_pkgs,
+                                         verbose=verbose, _bad_provides=_bad_provides)
     elif path.is_dir() and '__pycache__' not in path.as_posix():
         for subpath in path.iterdir():
-            provides += search_for_provides(subpath, prefixes, abs_mode, skip_wrong_names, skip_namespace_pkgs)
+            provides += search_for_provides(subpath, prefixes, abs_mode, skip_wrong_names, skip_namespace_pkgs,
+                                            verbose=verbose, _bad_provides=_bad_provides)
     return provides
 
 
@@ -287,7 +298,8 @@ def generate_provides(files, prefixes=sys.path, skip_pth=False, only_prefix=Fals
     for path, module_name in files_dict.items():
         provides[path] = {'provides': search_for_provides(path, prefixes, abs_mode=abs_mode,
                                                           skip_wrong_names=skip_wrong_names,
-                                                          skip_namespace_pkgs=skip_namespace_pkgs),
+                                                          skip_namespace_pkgs=skip_namespace_pkgs,
+                                                          _bad_provides=set(), verbose=verbose),
                           'package': module_name}
 
     if not skip_pth:
@@ -313,8 +325,8 @@ def generate_provides(files, prefixes=sys.path, skip_pth=False, only_prefix=Fals
 def main():
     args = argparse.ArgumentParser(description='Search provides for module')
     args.add_argument('--prefixes', help='List of prefixes')
-    args.add_argument('--abs_mode', action='store_true',
-                      help='Turn on plugin mode (build only absolute provides)')
+    args.add_argument('--full_mode', action='store_true',
+                      help='Build all provides, not just absolute')
     args.add_argument('--only_prefix', action='store_true',
                       help='Skip all provides, that are not in prefix')
     args.add_argument('--skip_pth', action='store_true', help='Skip pth files')
@@ -329,7 +341,7 @@ def main():
     prefixes = args.prefixes.split(',') if args.prefixes else sys.path
 
     path_provides = generate_provides(files=args.input, prefixes=prefixes,
-                                      skip_pth=args.skip_pth, abs_mode=args.abs_mode,
+                                      skip_pth=args.skip_pth, abs_mode=not args.full_mode,
                                       only_prefix=args.only_prefix, verbose=args.verbose)
     for path, provides in path_provides.items():
         if args.verbose:
