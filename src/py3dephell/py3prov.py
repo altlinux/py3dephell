@@ -265,6 +265,17 @@ def files_filter(files, prefixes=sys.path, only_prefix=False,
     return files_dict
 
 
+def _find_dist_info_recs(verbose=False):
+    for direc in set([sysconfig.get_paths()['purelib'], sysconfig.get_paths()['platlib']]):
+        for pkg in Path(direc).iterdir():
+            if (dist_inf := Path(pkg)).is_dir() and dist_inf.name.endswith(".dist-info"):
+                if (rec := dist_inf.joinpath("RECORD")).exists():
+                    yield dist_inf, rec
+                elif verbose:
+                    print(f"Found dist_info, which does not provide RECORD file:{dist_inf.absolute().as_posix()}",
+                          file=sys.stderr)
+
+
 def generate_provides(files, prefixes=sys.path, skip_pth=False, only_prefix=False,
                       deep_search=False, abs_mode=False, verbose=True,
                       skip_wrong_names=True, skip_namespace_pkgs=True):
