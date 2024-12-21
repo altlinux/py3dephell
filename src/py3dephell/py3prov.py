@@ -285,6 +285,14 @@ def _genprov_from_recs(record, verbose=False):
 
 
 def genprov_from_env(verbose=False):
+    """
+    Generate provides from installed to environment wheels according to their .dist-info/RECORD file
+
+    :param verbose: make it verbose
+    :type verbose: Bool
+    :return: yield from package name, package version and its provides
+    :rtype: generator object
+    """
     pattern = re.compile("([^/]+)-([^-]+)\.dist-info")
     for dist_inf, recs in _find_dist_info_recs(verbose):
         if (fnd := pattern.search(dist_inf.name)) is not None:
