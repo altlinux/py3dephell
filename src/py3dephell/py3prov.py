@@ -284,25 +284,29 @@ def _genprov_from_recs(record, verbose=False):
                        recs), start=[])
 
 
-def genprov_from_env(verbose=False):
+def genprov_from_env(paths=[], verbose=False):
     """
     Generate provides from installed to environment wheels according to their .dist-info/RECORD file
 
+    :param paths: paths where py3prov should look for wheels.
+    If not set, wheels will be searched according to purelib and platlib
+    :type paths: list()
     :param verbose: make it verbose
     :type verbose: Bool
     :return: yield from package name, package version and its provides
     :rtype: generator object
     """
+    paths = set([sysconfig.get_paths()['purelib'], sysconfig.get_paths()['platlib']]) if paths == [] else paths
     pattern = re.compile("([^/]+)-([^-]+)\.dist-info")
-    for dist_inf, recs in _find_dist_info_recs(verbose):
+    for dist_inf, recs in _find_dist_info_recs(paths, verbose):
         if (fnd := pattern.search(dist_inf.name)) is not None:
             pkg, ver = fnd.groups()
             provs = set(_genprov_from_recs(recs, verbose=verbose))
             yield pkg, ver, provs
 
 
-def _find_dist_info_recs(verbose=False):
-    for direc in set([sysconfig.get_paths()['purelib'], sysconfig.get_paths()['platlib']]):
+def _find_dist_info_recs(paths, verbose=False):
+    for direc in paths:
         for pkg in Path(direc).iterdir():
             if (dist_inf := Path(pkg)).is_dir() and dist_inf.name.endswith(".dist-info"):
                 if (rec := dist_inf.joinpath("RECORD")).exists():
