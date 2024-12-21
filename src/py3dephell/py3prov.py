@@ -284,7 +284,7 @@ def _genprov_from_recs(record, verbose=False):
                        recs), start=[])
 
 
-def genprov_distinfo_recs(verbose=False):
+def genprov_from_env(verbose=False):
     pattern = re.compile("([^/]+)-([^-]+)\.dist-info")
     for dist_inf, recs in _find_dist_info_recs(verbose):
         if (fnd := pattern.search(dist_inf.name)) is not None:
