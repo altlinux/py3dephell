@@ -3,6 +3,7 @@
 import os
 import re
 import sys
+import csv
 import argparse
 import sysconfig
 from pathlib import Path
@@ -263,6 +264,33 @@ def files_filter(files, prefixes=sys.path, only_prefix=False,
             files_dict[file] = None
 
     return files_dict
+
+
+def _process_rec_file(file, verbose=False):
+    try:
+        with open(file) as f:
+            return list(filter(lambda p: suff in [so_suffix, shlib_suffix, soabi, soabi3, '.py', abi3]
+                               if (suff := Path(p).suffix) is not None else True,
+                               map(lambda row: row[0], csv.reader(f))))
+    except (FileNotFoundError, PermissionError) as err:
+        if verbose:
+            print(f"Failed to proceed {file} due to {err}", file=sys.stderr)
+
+
+def _genprov_from_recs(record, verbose=False):
+    if (recs := _process_rec_file(record, verbose=verbose)) is not None:
+        return sum(map(lambda path: create_provides_from_path(path, abs_mode=True,
+                                                              skip_namespace_pkgs=False, verbose=verbose),
+                       recs), start=[])
+
+
+def genprov_distinfo_recs(verbose=False):
+    pattern = re.compile("([^/]+)-([^-]+)\.dist-info")
+    for dist_inf, recs in _find_dist_info_recs(verbose):
+        if (fnd := pattern.search(dist_inf.name)) is not None:
+            pkg, ver = fnd.groups()
+            provs = set(_genprov_from_recs(recs, verbose=verbose))
+            yield pkg, ver, provs
 
 
 def _find_dist_info_recs(verbose=False):
