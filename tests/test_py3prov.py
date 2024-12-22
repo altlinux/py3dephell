@@ -198,21 +198,18 @@ class TestPy3Prov(unittest.TestCase):
         pkg_name = "pkg_for_wheel"
         pkg_version = "5.5.5"
         test_cases = {}
-        test_cases[0] = [{"paths": [self.tests_packages]}, (pkg_name, pkg_version,
-                         set([pkg_name, f"{pkg_name}.__init__", f"{pkg_name}.module_1", f"{pkg_name}.module_2"])),
+        test_cases[0] = [{"paths": [self.tests_packages]}, {(pkg_name, pkg_version):
+                         set([pkg_name, f"{pkg_name}.__init__", f"{pkg_name}.module_1", f"{pkg_name}.module_2"])},
                          False]
-        test_cases[1] = [{"paths": [self.tests_packages]}, (),
+        test_cases[1] = [{"paths": [self.tests_packages]}, dict(),
                          True]
         for subtest_num, inp_out in test_cases.items():
             with self.subTest(f"Testing generate_provides subTest:{subtest_num}"):
                 generate_install_wheel(self.tests_packages, pkg_name, pkg_version, inp_out[2])
-                try:
-                    yielded = py3prov.genprov_from_env(**inp_out[0]).__next__()
-                except StopIteration:
-                    yielded = ()
+                dic = py3prov.genprov_from_env(**inp_out[0])
 
-                self.assertTupleEqual(yielded, inp_out[1],
-                                      msg=f'SubTest:{subtest_num} FAILED')
+                self.assertDictEqual(dic, inp_out[1],
+                                     msg=f'SubTest:{subtest_num} FAILED')
         rmtree(self.tmp)
 
 

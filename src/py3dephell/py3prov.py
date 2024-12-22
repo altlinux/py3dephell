@@ -293,16 +293,18 @@ def genprov_from_env(paths=[], verbose=False):
     :type paths: list()
     :param verbose: make it verbose
     :type verbose: Bool
-    :return: yield from package name, package version and its provides
-    :rtype: generator object
+    :return: dictionary from package name, package version and its provides
+    :rtype: dict
     """
     paths = set([sysconfig.get_paths()['purelib'], sysconfig.get_paths()['platlib']]) if paths == [] else paths
     pattern = re.compile("([^/]+)-([^-]+)\.dist-info")
+    pkg_ver_provs = {}
     for dist_inf, recs in _find_dist_info_recs(paths, verbose):
         if (fnd := pattern.search(dist_inf.name)) is not None:
             pkg, ver = fnd.groups()
             provs = set(_genprov_from_recs(recs, verbose=verbose))
-            yield pkg, ver, provs
+            pkg_ver_provs[(pkg, ver)] = provs
+    return pkg_ver_provs
 
 
 def _find_dist_info_recs(paths, verbose=False):
