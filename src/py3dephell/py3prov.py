@@ -80,7 +80,7 @@ def create_provides_from_path(path, prefixes=sys.path, abs_mode=False,
             path = Path(path.as_posix().replace(pref + '/', ''))
 
     if not path:
-        raise ValueError('py3prov.create_provides_from_path: path cannot be empty (possibly it was cut by pref)')
+        raise ValueError('py3prov.create_provides_from_path: path cannot be empty (possibly it was cut by prefix)')
 
     top_package_flag = False
 
@@ -102,7 +102,7 @@ def create_provides_from_path(path, prefixes=sys.path, abs_mode=False,
 
         if '.' in parts[-1]:
             if parts[-1] not in _bad_provides and verbose:
-                print(f'py3prov: bad name for provides from path:{path.as_posix()}', file=sys.stderr)
+                print(f'py3prov: bad name for provides from path:{path}', file=sys.stderr)
                 _bad_provides.add(parts[-1])
 
         if abs_mode and (all([part.isidentifier() for part in parts]) or not skip_wrong_names):
