@@ -320,7 +320,7 @@ def filter_requirements(file, deps, provides=[], only_top_module=[], ignore_list
 def generate_requirements(files, add_prov_path=[], prefixes=sys.path,
                           ignore_list=sys.builtin_module_names, read_prov_from_file=None,
                           skip_subs=True, only_external_deps=False, only_top_module=False,
-                          exclude_stdlib=False, inspect_env=False, stderr=sys.stderr, verbose=True):
+                          exclude_stdlib=False, inspect_env=False, env_path=[], stderr=sys.stderr, verbose=True):
     '''
     Generate dependencies for given file-list, filter them through detected provides and return in specified format.
 
@@ -344,6 +344,8 @@ def generate_requirements(files, add_prov_path=[], prefixes=sys.path,
     :type exclude_stdlib: Bool
     :param inspect_env: inspect environment for installed packages and match with them requirements
     :type inspect_env: Bool
+    :param env_path: path to the environment (useful for inspect_env option)
+    :type env_path: [str]
     :param stderr: messages output
     :type stderr: io
     :param verbose: verbose flag
@@ -392,7 +394,9 @@ def generate_requirements(files, add_prov_path=[], prefixes=sys.path,
         add_provides.add("os.path")
 
     if inspect_env:
-        env_provides = genprov_from_env(verbose=verbose)
+        env_path = set([sysconfig.get_paths()['purelib'],
+                        sysconfig.get_paths()['platlib']]) if env_path == [] else env_path
+        env_provides = genprov_from_env(paths=env_path, verbose=verbose)
 
     for file in files:
         if file.endswith('.so'):
@@ -454,7 +458,7 @@ def main():
     args.add_argument('--add_prov_path', default="",
                       help='List of additional paths for provides (separated by ":")')
     args.add_argument('--prefixes',
-                      help='Prefixes that will be removed from full'
+                      help='Prefixes that will be removed from fully '
                       'qualified name for relative import (string separated by ":")')
     args.add_argument('--ignore_list', default="",
                       help='List of dependencies that should be ignored (separated by ":")')
@@ -472,6 +476,9 @@ def main():
     args.add_argument("--inspect_env", action="store_true",
                       help="Inspect environment for installed packages and "
                       + "match required symbols to installed packages")
+    args.add_argument("--env_path", default="",
+                      help='Set path to the environment with installed packages (string separated by ":"). '
+                      + "By default set to purelib and platlib")
     args.add_argument('--verbose', action='store_true',
                       help='Verbose stderr')
     args.add_argument('input', nargs='*',
@@ -492,6 +499,8 @@ def main():
     if not args.include_built_in:
         ignore_list += sys.builtin_module_names
 
+    env_path = [p for p in args.env_path.split(":") if p]
+
     dependencies = generate_requirements(files=args.input, add_prov_path=args.add_prov_path.split(":"),
                                          ignore_list=ignore_list,
                                          read_prov_from_file=args.read_prov_from_file,
@@ -499,7 +508,7 @@ def main():
                                          only_external_deps=args.exclude_hidden_deps,
                                          only_top_module=args.only_top_module,
                                          exclude_stdlib=not args.include_stdlib,
-                                         inspect_env=args.inspect_env,
+                                         inspect_env=args.inspect_env, env_path=env_path,
                                          verbose=args.verbose)
 
     if not args.inspect_env:
