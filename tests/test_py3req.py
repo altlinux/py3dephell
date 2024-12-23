@@ -6,7 +6,7 @@ import tempfile
 import unittest
 from shutil import rmtree
 from functools import reduce
-from package import generate_somodule, generate_pymodule
+from package import generate_somodule, generate_pymodule, generate_install_wheel
 from py3dephell import py3req
 
 
@@ -119,24 +119,34 @@ class TestPy3Req(unittest.TestCase):
         dep_version = os.getenv('RPM_PYTHON3_VERSION', '%s.%s' % sys.version_info[0:2])
         so_dep = f'python{dep_version}-ABI(64bit)'
 
+        pkg_name = "pkg_for_wheel"
+        pkg_version = "5.5.5"
+        generate_install_wheel(self.tmp, pkg_name, pkg_version)
         module_1 = generate_pymodule(self.tmp, "module_1",
                                      text="from . import module_2\nimport os\nimport requests\nimport os.path")
         module_2 = generate_pymodule(self.tmp, "module_2", text="import sys\n__import__('unmet')\nimport importlib")
-        files = list(map(lambda x: x.absolute().as_posix(), module_1 + module_2))
+        module_3 = generate_pymodule(self.tmp, "module_3", text="import pkg_for_wheel")
+        files = list(map(lambda x: x.absolute().as_posix(), module_1 + module_2 + module_3))
 
         test_cases = {}
         test_cases[0] = [{'files': files},
                          list(map(lambda dep: f"{dep}",
-                                  ['os', 'requests', 'unmet', 'importlib', 'os.path'])) + [so_dep]]
+                                  ['os', 'requests', 'unmet', 'importlib', 'os.path', "pkg_for_wheel"])) + [so_dep]]
         test_cases[1] = [{**test_cases[0][0], 'exclude_stdlib': True},
-                         list(map(lambda dep: f"{dep}", ['requests', 'unmet'])) + [so_dep]]
+                         list(map(lambda dep: f"{dep}", ['requests', 'unmet', "pkg_for_wheel"])) + [so_dep]]
+        test_cases[2] = [{**test_cases[1][0], "inspect_env": True, 'exclude_stdlib': True, "env_path": [self.tmp]},
+                         ["pkg_for_wheel==5.5.5"]]
 
         for subtest_num, inp_out in test_cases.items():
             with self.subTest(msg=f'Testing py3req.filter_requirements subTest:{subtest_num}'):
                 with open('/dev/null', 'w') as stderr:
-                    got = reduce(lambda d1, d2: d1 | d2, reduce(lambda d1, d2: d1 + d2,
-                                                                (py3req.generate_requirements(**inp_out[0],
-                                                                                              stderr=stderr).values())))
+                    if subtest_num != 2:
+                        got = reduce(lambda d1, d2: d1 | d2,
+                                     reduce(lambda d1, d2: d1 + d2,
+                                            (py3req.generate_requirements(**inp_out[0],
+                                                                          stderr=stderr).values())))
+                    else:
+                        got = py3req.generate_requirements(**inp_out[0], stderr=stderr)
                     self.assertSetEqual(set(got), set(inp_out[1]),
                                         msg=f'SubTest:{subtest_num} FAILED')
         rmtree(self.tmp)
