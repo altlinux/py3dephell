@@ -399,8 +399,6 @@ def generate_requirements(files, add_prov_path=[], prefixes=sys.path,
             if (dep := catch_so(file, stderr)):
                 if not inspect_env:
                     dependencies[file] = set(), set(), set(), set([dep])
-                else:
-                    tmp_dependencies |= set([dep])
                 continue
 
         abs_deps, rel_deps, adv_deps, skip =\
