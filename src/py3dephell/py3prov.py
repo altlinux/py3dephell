@@ -38,7 +38,7 @@ def processing_pth(path):
             new_names = [os.path.join(path, new_dir) for new_dir in new_names]
             return new_names
     except FileNotFoundError:
-        print(f'py3prov: No such file or directory:{path}', file=sys.stderr)
+        print(f'py3prov:INFO: No such file or directory:{path}', file=sys.stderr)
         return []
 
 
@@ -102,7 +102,7 @@ def create_provides_from_path(path, prefixes=sys.path, abs_mode=False,
 
         if '.' in parts[-1]:
             if parts[-1] not in _bad_provides and verbose:
-                print(f'py3prov: bad name for provides from path:{path}', file=sys.stderr)
+                print(f'py3prov:INFO: bad name for provides from path:{path}', file=sys.stderr)
                 _bad_provides.add(parts[-1])
 
         if abs_mode and (all([part.isidentifier() for part in parts]) or not skip_wrong_names):
@@ -182,7 +182,7 @@ def module_detector(path, prefixes, modules=[], verbose_mode=True):
         if pref and (pref := os.path.normpath(pref)) and path.startswith(pref + '/') and pref != os.path.normpath(path):
             module = re.match(r'%s\/([^\/]+)' % re.escape(pref), path).groups()[0]
             if verbose_mode and module not in modules:
-                print(f'py3prov: detected potential module:{module}', file=sys.stderr)
+                print(f'py3prov:INFO: detected potential module:{module}', file=sys.stderr)
             return pref, module
     return None, None
 
@@ -203,20 +203,20 @@ def pth_detector(pathes, verbose_mode=False):
         path = Path(path)
         if not path.exists():
             if verbose_mode:
-                print(f'Path {path} does not exist, skip it', file=sys.stderr)
+                print(f'py3prov:WARNING: Path {path} does not exist, skip it', file=sys.stderr)
             continue
         if path.suffix == '.pth':
             if verbose_mode:
-                print(f'Detected .pth file:{path.absolute().as_posix()}', file=sys.stderr)
+                print(f'py3prov:INFO: Detected .pth file:{path.absolute().as_posix()}', file=sys.stderr)
             new_prefixes += processing_pth(path.absolute().as_posix())
         elif path.is_dir():
             for item in path.iterdir():
                 if item.suffix == '.pth':
-                    print(f'Detected .pth file:{item.absolute().as_posix()}', file=sys.stderr)
+                    print(f'py3prov:INFO: Detected .pth file:{item.absolute().as_posix()}', file=sys.stderr)
                     new_prefixes += processing_pth(item.absolute().as_posix())
         else:
             if verbose_mode:
-                print(f'Path {path} is not a directory or .pth file, skip it', file=sys.stderr)
+                print(f'py3prov:INFO: Path {path} is not a directory or .pth file, skip it', file=sys.stderr)
     return new_prefixes
 
 
@@ -274,7 +274,7 @@ def _process_rec_file(file, verbose=False):
                                map(lambda row: row[0], csv.reader(f))))
     except (FileNotFoundError, PermissionError) as err:
         if verbose:
-            print(f"Failed to proceed {file} due to {err}", file=sys.stderr)
+            print(f"py3prov:WARNING: Failed to proceed {file} due to {err}", file=sys.stderr)
 
 
 def _genprov_from_recs(record, verbose=False):
@@ -314,7 +314,8 @@ def _find_dist_info_recs(paths, verbose=False):
                 if (rec := dist_inf.joinpath("RECORD")).exists():
                     yield dist_inf, rec
                 elif verbose:
-                    print(f"Found dist_info, which does not provide RECORD file:{dist_inf.absolute().as_posix()}",
+                    print("py3prov:WARNING: Found dist-info, which does not"
+                          f" provide RECORD file:{dist_inf.absolute().as_posix()}",
                           file=sys.stderr)
 
 
