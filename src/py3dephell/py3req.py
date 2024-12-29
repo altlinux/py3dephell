@@ -444,9 +444,9 @@ def generate_requirements(files, add_prov_path=[], prefixes=sys.path,
                 if not tmp_dependencies:
                     break
         else:
-            if verbose:
+            if verbose and tmp_dependencies:
                 print("WARNING! Dependencies not matched to any package"
-                      f"in your environment:{",".join(tmp_dependencies)}",
+                      f" in your environment:{",".join(tmp_dependencies)}",
                       file=sys.stderr)
 
     return dependencies
