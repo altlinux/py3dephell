@@ -155,6 +155,33 @@ But it is possible to ignore all deps, that are hidden inside contexts:
 %
 ```
 
+#### Matching dependencies with environment
+Imagine you write your big project, all your dependencies (including building and testing dependencies) are installed to your virtual (or real) environment. So you need to detect your runnning dependencies and match them to packages, installed to your environment, and get **requirements.txt** file, which you can include in your package. For such cases there is **--inspect_env** option:
+
+```shell
+% py3req --inspect_env --verbose src
+% cat requirements.txt
+numpy==2.2.1
+```
+
+As you can see, **py3req** saves matched dependencies to **requirements.txt** file.
+
+Now we can get your testing dependencies:
+```shell
+% py3req --inspect_env --verbose tests
+py3prov:INFO: bad name for provides from path:config-3.12-x86_64-linux-gnu
+py3prov:INFO: bad name for provides from path:numpy.libs
+py3req:/tmp/project/tests/test1.py: "unittest" lines:[1] is possibly a self-providing dependency, skip it
+The following deps:pytest was satisfied by package:pytest==8.3.4
+% cat requirements.txt
+pytest==8.3.4
+```
+
+The difference between running **py3req** with option **--inspect_env** and **pip3 freeze** is that the last command lists all packages installed to your environment (even all building, testing and running dependencies), including dependencies of your dependencies, their dependencies and so on. But **py3req** just finds all dependencies of given sources and can match it to the installed packages.
+
+Also there is an extra option for **--inspect_env** which is called **--env_path**. This options lets you to specify path to your environment (where your packages are installed). It is usefull for **CI** or something like that, but by default **py3req** checks your purelib and platlib, so you can skip this option.
+
+
 Other options are little bit specific, but there is clear **--help** option output. Please, check it.
 
 
