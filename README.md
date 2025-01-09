@@ -177,9 +177,9 @@ The following deps:pytest was satisfied by package:pytest==8.3.4
 pytest==8.3.4
 ```
 
-The difference between running **py3req** with option **--inspect_env** and **pip3 freeze** is that the last command lists all packages installed to your environment (even all building, testing and running dependencies), including dependencies of your dependencies, their dependencies and so on. But **py3req** just finds all dependencies of given sources and can match it to the installed packages.
+The difference between running **py3req** with option **--inspect_env** and **pip3 freeze** is that the last command lists all packages installed to your environment (including their dependencies). But **py3req** just finds all dependencies of given sources and can match it to the installed packages.
 
-Also there is an extra option for **--inspect_env** which is called **--env_path**. This options lets you to specify path to your environment (where your packages are installed). It is usefull for **CI** or something like that, but by default **py3req** checks your purelib and platlib, so you can skip this option.
+Also there is an extra option for **--inspect_env** which is called **--env_path**. This options lets you to specify path to your environment (where your packages are installed). It is usefull for **CI** or something like that, but by default **py3req** checks your [purelib](https://docs.python.org/3/library/sysconfig.html#installation-paths) and [platlib](https://docs.python.org/3/library/sysconfig.html#installation-paths), so you can skip this option.
 
 
 Other options are little bit specific, but there is clear **--help** option output. Please, check it.
