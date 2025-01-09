@@ -518,11 +518,7 @@ def main():
             elif any(deps):
                 print('\n'.join(['\n'.join(req) for req in deps if req]))
     else:
-        try:
-            with open("requirements.txt", "w") as w:
-                print("\n".join(dependencies), file=w)
-        except PermissionError:
-            print("Failed to write requirements to requirements.txt due to permission error", file=sys.stderr)
+        print("\n".join(dependencies))
 
 
 if __name__ == '__main__':
