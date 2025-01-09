@@ -1,4 +1,7 @@
+import csv
+import hashlib
 import pathlib
+from shutil import rmtree
 
 
 def prepare_package(path, name, namespace_pkg=False, w_pth=False, level=0):
@@ -47,3 +50,31 @@ def generate_pymodule(path, name, text=None):
     p = pathlib.Path(path).joinpath(f'{name}.py')
     p.write_text(text)
     return [p] + generate_somodule(path, f'{name}_lib')
+
+
+def generate_install_wheel(path, name, version, broken=False):
+    """
+    Generate and install dummy wheel
+    """
+    p = pathlib.Path(path).joinpath(name)
+    try:
+        p.mkdir(parents=True)
+    except FileExistsError:
+        rmtree(p)
+        p.mkdir(parents=True)
+
+    for module, function in zip(["module_1.py", "module_2.py", "__init__.py"], ["func_1", "func_2", "func"]):
+        p.joinpath(module).write_text(f"def {function}:\n\tpass")
+
+    d_io = pathlib.Path(path).joinpath(f"{name}-{version}.dist-info")
+    try:
+        d_io.mkdir(parents=True)
+    except FileExistsError:
+        rmtree(d_io)
+        d_io.mkdir(parents=True)
+    if not broken:
+        with open(d_io.joinpath("RECORD"), "w", newline="") as csv_file:
+            csv_writer = csv.writer(csv_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+            for module, function in zip(["module_1.py", "module_2.py", "__init__.py"], ["func_1", "func_2", "func"]):
+                text = f"def {function}:\n\tpass"
+                csv_writer.writerow([f"{name}/{module}", hashlib.sha256(text.encode()).hexdigest(), 666])

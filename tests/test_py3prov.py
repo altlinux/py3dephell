@@ -3,7 +3,7 @@ import pathlib
 import unittest
 import tempfile
 from shutil import rmtree
-from package import prepare_package
+from package import prepare_package, generate_install_wheel
 from py3dephell import py3prov
 
 
@@ -191,6 +191,24 @@ class TestPy3Prov(unittest.TestCase):
         for subtest_num, inp_out in test_cases.items():
             with self.subTest(f"Testing generate_provides subTest:{subtest_num}"):
                 self.assertDictEqual(py3prov.generate_provides(**inp_out[0]), inp_out[1],
+                                     msg=f'SubTest:{subtest_num} FAILED')
+        rmtree(self.tmp)
+
+    def test_genprov_from_env(self):
+        pkg_name = "pkg_for_wheel"
+        pkg_version = "5.5.5"
+        test_cases = {}
+        test_cases[0] = [{"paths": [self.tests_packages]}, {(pkg_name, pkg_version):
+                         set([pkg_name, f"{pkg_name}.__init__", f"{pkg_name}.module_1", f"{pkg_name}.module_2"])},
+                         False]
+        test_cases[1] = [{"paths": [self.tests_packages]}, dict(),
+                         True]
+        for subtest_num, inp_out in test_cases.items():
+            with self.subTest(f"Testing generate_provides subTest:{subtest_num}"):
+                generate_install_wheel(self.tests_packages, pkg_name, pkg_version, inp_out[2])
+                dic = py3prov.genprov_from_env(**inp_out[0])
+
+                self.assertDictEqual(dic, inp_out[1],
                                      msg=f'SubTest:{subtest_num} FAILED')
         rmtree(self.tmp)
 

@@ -9,7 +9,7 @@ import shlex
 import argparse
 import pathlib
 import sysconfig
-from .py3prov import generate_provides, search_for_provides
+from .py3prov import generate_provides, search_for_provides, genprov_from_env
 
 
 def _remove_reduntant_args(func):
@@ -296,6 +296,7 @@ def filter_requirements(file, deps, provides=[], only_top_module=[], ignore_list
     :rtype: set[str]
     '''
     dependencies = set()
+
     for dep, lines in deps.items():
         if dep in ignore_list:
             if verbose:
@@ -311,6 +312,7 @@ def filter_requirements(file, deps, provides=[], only_top_module=[], ignore_list
             if only_top_module:
                 dep = dep.split('.')[0]
             dependencies.add(dep)
+
     return dependencies
 
 
@@ -318,7 +320,7 @@ def filter_requirements(file, deps, provides=[], only_top_module=[], ignore_list
 def generate_requirements(files, add_prov_path=[], prefixes=sys.path,
                           ignore_list=sys.builtin_module_names, read_prov_from_file=None,
                           skip_subs=True, only_external_deps=False, only_top_module=False,
-                          exclude_stdlib=False, stderr=sys.stderr, verbose=True):
+                          exclude_stdlib=False, inspect_env=False, env_path=[], stderr=sys.stderr, verbose=True):
     '''
     Generate dependencies for given file-list, filter them through detected provides and return in specified format.
 
@@ -340,6 +342,10 @@ def generate_requirements(files, add_prov_path=[], prefixes=sys.path,
     :type only_top_module: Bool
     :param exclude_stdlib: exclude from dependencies standard lib provides
     :type exclude_stdlib: Bool
+    :param inspect_env: inspect environment for installed packages and match with them requirements
+    :type inspect_env: Bool
+    :param env_path: path to the environment (useful for inspect_env option)
+    :type env_path: [str]
     :param stderr: messages output
     :type stderr: io
     :param verbose: verbose flag
@@ -351,7 +357,11 @@ def generate_requirements(files, add_prov_path=[], prefixes=sys.path,
     abs_provides = set()
     add_provides = set()
     modules = {}
-    dependencies = {}
+    if not inspect_env:
+        dependencies = {}
+    else:
+        dependencies = set()
+        tmp_dependencies = set()
 
     if read_prov_from_file:
         with open(read_prov_from_file) as f:
@@ -383,10 +393,16 @@ def generate_requirements(files, add_prov_path=[], prefixes=sys.path,
         # This module is provided by different real modules which are platform specific, such as posixpath.py
         add_provides.add("os.path")
 
+    if inspect_env:
+        env_path = set([sysconfig.get_paths()['purelib'],
+                        sysconfig.get_paths()['platlib']]) if env_path == [] else env_path
+        env_provides = genprov_from_env(paths=env_path, verbose=verbose)
+
     for file in files:
         if file.endswith('.so'):
             if (dep := catch_so(file, stderr)):
-                dependencies[file] = set(), set(), set(), set([dep])
+                if not inspect_env:
+                    dependencies[file] = set(), set(), set(), set([dep])
                 continue
 
         abs_deps, rel_deps, adv_deps, skip =\
@@ -412,7 +428,26 @@ def generate_requirements(files, add_prov_path=[], prefixes=sys.path,
 
         filter_requirements(file, skip, skip_flag=True, stderr=stderr, verbose=verbose)
 
-        dependencies[file] = abs_deps, rel_deps, adv_deps, set()
+        if not inspect_env:
+            dependencies[file] = abs_deps, rel_deps, adv_deps, set()
+        else:
+            tmp_dependencies |= abs_deps | rel_deps | adv_deps
+
+    if inspect_env:
+        for pkg_ver, provs in env_provides.items():
+            if (matched := provs.intersection(tmp_dependencies)):
+                tmp_dependencies.difference_update(matched)
+                dependencies.add("==".join(pkg_ver))
+                if verbose:
+                    print(f"The following deps:{",".join(matched)} was satisfied by package:{"==".join(pkg_ver)}",
+                          file=sys.stderr)
+                if not tmp_dependencies:
+                    break
+        else:
+            if verbose and tmp_dependencies:
+                print("WARNING! Dependencies not matched to any package"
+                      f" in your environment:{",".join(tmp_dependencies)}",
+                      file=sys.stderr)
 
     return dependencies
 
@@ -423,7 +458,7 @@ def main():
     args.add_argument('--add_prov_path', default="",
                       help='List of additional paths for provides (separated by ":")')
     args.add_argument('--prefixes',
-                      help='Prefixes that will be removed from full'
+                      help='Prefixes that will be removed from fully '
                       'qualified name for relative import (string separated by ":")')
     args.add_argument('--ignore_list', default="",
                       help='List of dependencies that should be ignored (separated by ":")')
@@ -438,6 +473,12 @@ def main():
                       help='For dependency like a.b skip b')
     args.add_argument('--include_stdlib', action='store_true',
                       help='Exclude dependencies that are provided by installed python3 standart library')
+    args.add_argument("--inspect_env", action="store_true",
+                      help="Inspect environment for installed packages and "
+                      + "match required symbols to installed packages")
+    args.add_argument("--env_path", default="",
+                      help='Set path to the environment with installed packages (string separated by ":"). '
+                      + "By default set to purelib and platlib")
     args.add_argument('--verbose', action='store_true',
                       help='Verbose stderr')
     args.add_argument('input', nargs='*',
@@ -458,6 +499,8 @@ def main():
     if not args.include_built_in:
         ignore_list += sys.builtin_module_names
 
+    env_path = [p for p in args.env_path.split(":") if p]
+
     dependencies = generate_requirements(files=args.input, add_prov_path=args.add_prov_path.split(":"),
                                          ignore_list=ignore_list,
                                          read_prov_from_file=args.read_prov_from_file,
@@ -465,13 +508,17 @@ def main():
                                          only_external_deps=args.exclude_hidden_deps,
                                          only_top_module=args.only_top_module,
                                          exclude_stdlib=not args.include_stdlib,
+                                         inspect_env=args.inspect_env, env_path=env_path,
                                          verbose=args.verbose)
 
-    for file, deps in dependencies.items():
-        if any(deps) and args.verbose:
-            print(f'{file}:{" ".join([" ".join(req) for req in deps if req])}')
-        elif any(deps):
-            print('\n'.join(['\n'.join(req) for req in deps if req]))
+    if not args.inspect_env:
+        for file, deps in dependencies.items():
+            if any(deps) and args.verbose:
+                print(f'{file}:{" ".join([" ".join(req) for req in deps if req])}')
+            elif any(deps):
+                print('\n'.join(['\n'.join(req) for req in deps if req]))
+    else:
+        print("\n".join(dependencies))
 
 
 if __name__ == '__main__':
