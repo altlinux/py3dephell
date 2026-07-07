@@ -7,6 +7,7 @@ import csv
 import argparse
 import sysconfig
 from pathlib import Path
+from functools import reduce
 
 
 so_suffix = sysconfig.get_config_var('EXT_SUFFIX')
@@ -384,6 +385,9 @@ def main():
     args.add_argument('--only_prefix', action='store_true',
                       help='Skip all provides, that are not in prefix')
     args.add_argument('--skip_pth', action='store_true', help='Skip pth files')
+    args.add_argument("--whatprovides", action="append", default=[],
+                      help="List files which provides specified dependencies."
+                           " Example: --whatprovides foo --whatprovides sys")
     args.add_argument('--verbose', action='store_true', help='Turn on verbose mode')
     args.add_argument('input', nargs='*', default=[],
                       help='List of files from which provides will be created')
@@ -397,8 +401,13 @@ def main():
     path_provides = generate_provides(files=args.input, prefixes=prefixes,
                                       skip_pth=args.skip_pth, abs_mode=not args.full_mode,
                                       only_prefix=args.only_prefix, verbose=args.verbose)
+
+    what_provides = set(args.whatprovides)
     for path, provides in path_provides.items():
-        if args.verbose:
+        if what_provides:
+            if (provs := what_provides.intersection(provides["provides"])):
+                print(f"{path}:{provs}")
+        elif args.verbose:
             print(f'{path}:{[prov for prov in provides["provides"] if isinstance(prov, str)]}')
         else:
             print(*[prov for prov in provides['provides'] if isinstance(prov, str)], sep='\n')

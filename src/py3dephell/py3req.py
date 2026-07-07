@@ -9,6 +9,7 @@ import shlex
 import argparse
 import pathlib
 import sysconfig
+from functools import reduce
 from .py3prov import generate_provides, search_for_provides, genprov_from_env
 
 
@@ -479,6 +480,9 @@ def main():
     args.add_argument("--env_path", default="",
                       help='Set path to the environment with installed packages (string separated by ":"). '
                       + "By default set to purelib and platlib")
+    args.add_argument("--whatdepends", action="append", default=[],
+                      help="List files which requires specified dependencies."
+                           " Example: --whatdepends foo --whatdepends sys")
     args.add_argument('--verbose', action='store_true',
                       help='Verbose stderr')
     args.add_argument('input', nargs='*',
@@ -511,9 +515,16 @@ def main():
                                          inspect_env=args.inspect_env, env_path=env_path,
                                          verbose=args.verbose)
 
+    what_depends = set(args.whatdepends)
     if not args.inspect_env:
         for file, deps in dependencies.items():
-            if any(deps) and args.verbose:
+            if any(deps) and what_depends:
+                reqs = reduce(lambda acc, r:
+                              acc.union(what_depends.intersection(r)),
+                              deps, set())
+                if reqs:
+                    print(f'{file}:{" ".join(reqs)}')
+            elif any(deps) and args.verbose:
                 print(f'{file}:{" ".join([" ".join(req) for req in deps if req])}')
             elif any(deps):
                 print('\n'.join(['\n'.join(req) for req in deps if req]))
