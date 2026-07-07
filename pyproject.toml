@@ -1,6 +1,6 @@
 [project]
 name = "py3dephell"
-version = "0.4.1"
+version = "0.5.1"
 authors = [
 {name = "Daniel Zagaynov", email = "kotopesutility@altlinux.org"},
 ]
