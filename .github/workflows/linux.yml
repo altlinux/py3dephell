@@ -1,0 +1,15 @@
+---
+name: check_on_linux
+on: [push, pull_request]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - run: sudo apt-get update
+      - run: sudo apt-get install python3
+      - name: Describe
+        run: git show
+      - name: Run tests
+        run: PYTHONPATH=src python3 -m unittest discover -s tests -v
