@@ -115,6 +115,15 @@ Another way to exclude such dependency is to ignore it manually, using **--ignor
 numpy
 ```
 
+Sometimes it is useful to see, which files requires the specified dependencies. Use option **--whatdepends**:
+```shell
+% py3req --include_stdlib --whatdepends csv --whatdepends ast tests
+tests/package.py:csv
+tests/test_py3req.py:ast
+```
+
+**NOTE**: we specified **--include_stdlib** only for example, **--whatdepends** does not require this option.
+
 #### Context dependencies
 
 Finally, there can be deps, that are hidden inside conditions or function calls. For example:
@@ -228,7 +237,18 @@ py3dephell.py3prov
 py3dephell.py3req
 ```
 
+Sometimes it is useful to see, which files provide the specified dependencies. Use option **--whatprovides**:
+```shell
+% py3prov --whatprovides py3dephell.py3req `find $TMP/env/lib/python3/site-packages/py3dephell`
+/tmp/.private/kotopesutility/env/lib/python3/site-packages/py3dephell/py3req.py:{'py3dephell.py3req'}
+/tmp/.private/kotopesutility/env/lib/python3/site-packages/py3dephell:{'py3dephell.py3req'}
+```
 
+It may be little bit confusing, that both py3dephell/py3req.py and py3dephell provide **py3dephell.py3req**, but it is okay since the first one is a module and the second one is a package containing this module. Also we had to specified path to every module from the package since **py3prov** generates provides for the specified path:
+```shell
+% py3prov --whatprovides py3dephell.py3req $TMP/penv/lib/python3/site-packages/py3dephell
+/tmp/.private/kotopesutility/penv/lib/python3/site-packages/py3dephell:{'py3dephell.py3req'}
+```
 
 Other options, such as **--only_prefix** and **--skip_pth** are little bit specific, but it is clear, what they can be used for. **--only_prefix** exclude those provides, that are not under prefixes. **--skip_pth** ignore [**.pth**](https://docs.python.org/3/library/site.html) files
 
